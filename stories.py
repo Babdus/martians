@@ -5,13 +5,15 @@ import numpy as np
 import sys
 
 signals = []
+out = sys.argv[2]
 
 for s in range(int(sys.argv[1])):
     tubes = {}
+    bfs = [81, 99, 90, 72]
 
     for i in range(3):
 
-        base_frequency = random.randint(2,5) * 20
+        base_frequency = bfs[s%int(sys.argv[1])] #random.randint(2,5) * 20
         overtone = 1
         formants = {}
         while overtone < 15:
@@ -58,4 +60,4 @@ for n in range(16):
         print(n, len(final_signal))
 print(n, len(final_signal))
 
-write('final_story.wav', rate, np.array(final_signal))
+write(out, rate, np.array(final_signal))
