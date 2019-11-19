@@ -9,14 +9,14 @@ out = sys.argv[2]
 
 for s in range(int(sys.argv[1])):
     tubes = {}
-    bfs = [81, 99, 90, 72]
+    bfs = [random.randint(5,12)*9, random.randint(5,12)*9, random.randint(5,12)*9, random.randint(5,12)*9]
 
-    for i in range(3):
+    for i in range(1):
 
         base_frequency = bfs[s%int(sys.argv[1])] #random.randint(2,5) * 20
         overtone = 1
         formants = {}
-        while overtone < 15:
+        while overtone < 40:
             step_multiplier = overtone//10 + 1
             formants[overtone] = random.uniform(1,3) / step_multiplier
             step = random.randint(step_multiplier,6*step_multiplier)
@@ -38,7 +38,7 @@ for s in range(int(sys.argv[1])):
                 amp = formants[overtone]/32 * math.exp(-i*decay_rate/rate)
                 noise = random.uniform(1,1+math.exp(-i*decay_rate*2/rate)/10000)
                 value += math.sin(math.pi * 2 * overtone * base_frequency * (i / rate) * noise) * amp
-        signal.append(value)
+            signal.append(value)
 
     write(f'story{s}.wav', rate, np.array(signal))
     signals.append(signal)
