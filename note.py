@@ -92,4 +92,4 @@ result = generate_note(
 
 print(max(result), min(result))
 
-write('note_test.wav', 44100, np.array(result))
+write('data/note_test.wav', 44100, np.array(result))
