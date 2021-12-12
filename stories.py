@@ -9,26 +9,26 @@ out = sys.argv[2]
 
 for s in range(int(sys.argv[1])):
     tubes = {}
-    bfs = [81, 99, 90, 72]
+    bfs = [random.randint(5,12)*9, random.randint(5,12)*9, random.randint(5,12)*9, random.randint(5,12)*9]
 
-    base_frequency = bfs[s % int(sys.argv[1])]  # random.randint(2,5) * 20
-    overtone = 1
-    formants = {}
-    while overtone < 15:
-        step_multiplier = overtone//10 + 1
-        formants[overtone] = random.uniform(1, 3) / step_multiplier
-        step = random.randint(step_multiplier, 6*step_multiplier)
-        overtone += step
+    for i in range(1):
 
-    print('formants: ', formants)
+        base_frequency = bfs[s%int(sys.argv[1])] #random.randint(2,5) * 20
+        overtone = 1
+        formants = {}
+        while overtone < 40:
+            step_multiplier = overtone//10 + 1
+            formants[overtone] = random.uniform(1,3) / step_multiplier
+            step = random.randint(step_multiplier,6*step_multiplier)
+            overtone += step
 
-    tubes[base_frequency] = formants
+        print(formants)
 
-    print('tubes: ', tubes)
+        tubes[base_frequency] = formants
 
     rate = 48000
     signal = []
-    decay_rate = random.uniform(1, 4)
+    decay_rate = random.uniform(1,4)
     for i in range(rate * 4):
         amplitude = 0
         for base_frequency in tubes:
@@ -36,9 +36,9 @@ for s in range(int(sys.argv[1])):
             value = 0
             for overtone in formants:
                 amp = formants[overtone]/32 * math.exp(-i*decay_rate/rate)
-                noise = random.uniform(1, 1+math.exp(-i*decay_rate*2/rate)/10000)
+                noise = random.uniform(1,1+math.exp(-i*decay_rate*2/rate)/10000)
                 value += math.sin(math.pi * 2 * overtone * base_frequency * (i / rate) * noise) * amp
-        signal.append(value)
+            signal.append(value)
 
     write(f'story{s}.wav', rate, np.array(signal))
     signals.append(signal)
@@ -53,10 +53,10 @@ for n in range(16):
     else:
         print(n, len(final_signal))
         for i in range(int(rate*3.5)):
-            final_signal[-int(rate*3.5)+i] += signals[n % 4][i]
+            final_signal[-int(rate*3.5)+i] += signals[n%4][i]
         print(n, len(final_signal))
-        final_signal += signals[n % 4][int(rate*3.5):]
-        print(len(signals[n % 4]))
+        final_signal += signals[n%4][int(rate*3.5):]
+        print(len(signals[n%4]))
         print(n, len(final_signal))
 print(n, len(final_signal))
 
