@@ -1,10 +1,9 @@
+from datetime import datetime
 from typing import Dict
 
-from scipy.io.wavfile import write
 import math
 import random
 import numpy as np
-import sys
 
 from schemas import Note, Curve
 
@@ -61,35 +60,40 @@ def generate_note(
         decay_curve: Curve = Curve.constant,
         release_duration: float = 0.5,
         release_curve: Curve = Curve.linear,
+        amplitude: float = 1,
         formants: Dict[int, float] = None,
         noise: float = 0.0001,
+        noise_sample_rate: int = 40,
+        detune: float = 0.05,
+        gain: float = 0,
         sample_rate: int = 44100
 ):
-    signal = []
-    for i in range(int(sample_rate * (duration + release_duration))):
-        value = 0
-        for overtone in formants:
-            amp = formants[overtone]
+    start_time = datetime.now()
+    signal = None
+    random_detune = random.uniform(-detune, detune)
+    for overtone in formants:
+        wave = []
+        for i in range(int(sample_rate * (duration + release_duration))):
+            amp = formants[overtone] * amplitude
             amp = apply_attack(amp, i, attack_duration, attack_curve, sample_rate)
             amp = apply_decay(amp, i, decay_duration, decay_curve, sample_rate)
             amp = apply_release(amp, i, duration, release_duration, release_curve, sample_rate)
 
-            frequency = c0_frequency * 2 ** (octave + note.value / 12)
-            value += math.sin(math.pi * 2 * overtone * frequency * (i / sample_rate)) * amp
-        signal.append(value)
-    return signal
+            random_noise = 0
+            if i % noise_sample_rate == random.randrange(0, noise_sample_rate):
+                random_noise = random.uniform(-noise, noise)
 
+            frequency = c0_frequency * 2 ** (octave + (note.value + random_detune) / 12)
+            wave.append(math.sin(math.pi * 2 * overtone * frequency * (i / sample_rate) + random_noise * amp) * amp)
 
-result = generate_note(
-    note=Note.E,
-    duration=1,
-    attack_duration=0.001,
-    decay_duration=100,
-    decay_curve=Curve.exponential,
-    release_duration=0.1,
-    formants={1: 1/2, 2: 1/4, 3: 1/8, 4: 1/16}
-)
+        if signal is not None:
+            signal += np.array(wave)
+        else:
+            signal = np.array(wave)
 
-print(max(result), min(result))
+    cut_limit = 1/2**gain
+    cut_signal = np.clip(signal, -cut_limit, cut_limit)
 
-write('data/note_test.wav', 44100, np.array(result))
+    print(datetime.now()-start_time)
+
+    return cut_signal
