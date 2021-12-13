@@ -69,6 +69,7 @@ def generate_note(
         sample_rate: int = 44100
 ):
     start_time = datetime.now()
+    print(note.name, octave, duration)
     signal = None
     random_detune = random.uniform(-detune, detune)
     for overtone in formants:
@@ -92,7 +93,7 @@ def generate_note(
             signal = np.array(wave)
 
     cut_limit = 1/2**gain
-    cut_signal = np.clip(signal, -cut_limit, cut_limit)
+    cut_signal = np.clip(signal, -cut_limit, cut_limit) / cut_limit
 
     print(datetime.now()-start_time)
 
