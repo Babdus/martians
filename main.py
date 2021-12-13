@@ -1,5 +1,5 @@
 import math
-from typing import Dict, List, Tuple
+from typing import Dict, List
 
 import numpy as np
 from scipy.io.wavfile import write
@@ -63,7 +63,7 @@ def generate_notes(note_strings: List[str], **kwargs):
             duration = int(note_list[1])
 
             cache[note_string] = generate_note(
-                note=eval(f'Note.{note_value}'),
+                note=getattr(Note, note_value),
                 octave=octave,
                 duration=duration,
                 **kwargs
@@ -73,7 +73,7 @@ def generate_notes(note_strings: List[str], **kwargs):
 
 
 def main():
-    sample_rate = 4410
+    sample_rate = 1024
 
     chord_formants = generate_formants(
         base_divisor=4,
@@ -102,6 +102,19 @@ def main():
         'sample_rate': sample_rate
     }
 
+    last_chord_attributes = {
+        'attack_duration': 0.035,
+        'attack_curve': Curve.exponential,
+        'decay_duration': 8.1,
+        'decay_curve': Curve.linear,
+        'release_duration': 0.1,
+        'formants': chord_formants,
+        'noise': 0.1,
+        'noise_sample_rate': sample_rate // 100,
+        'gain': 0,
+        'sample_rate': sample_rate
+    }
+
     melody_attributes = {
         'attack_duration': 0.03,
         'attack_curve': Curve.linear,
@@ -119,15 +132,21 @@ def main():
     harmony = generate_harmony(
         chords=generate_notes(
             ['C3_16', 'G3_8', 'E4_8', 'A3_4', 'F4_4', 'G3_4', 'E4_4',
-             'F2_8', 'C3_8', 'A3_8', 'F4_8', 'G2_8', 'D3_8', 'B3_8', 'G4_8'],
+             'F2_8', 'C3_8', 'A3_8', 'F4_8'],
             **chord_attributes
         ),
-        start_times=[0, 0, 0, 8, 8, 12, 12, 16, 16, 16, 16, 24, 24, 24],
+        start_times=[0, 0, 0, 8, 8, 12, 12, 16, 16, 16, 16],
         sample_rate=sample_rate
     )
 
     harmony = generate_harmony(
-        chords=[harmony] + generate_notes(['G4_8', 'A4_4', 'G4_6', 'F4_2', 'E4_2', 'D4_10'], **melody_attributes),
+        chords=[harmony] + generate_notes(['G2_8', 'D3_8', 'B3_8', 'G4_8'], **last_chord_attributes),
+        start_times=[0, 24, 24, 24, 24],
+        sample_rate=sample_rate
+    )
+
+    harmony = generate_harmony(
+        chords=[harmony] + generate_notes(['G4_8', 'A4_4', 'G4_6', 'F4_2', 'E4_2', 'D4_6'], **melody_attributes),
         start_times=[0, 0, 8, 12, 18, 20, 22],
         sample_rate=sample_rate
     )
@@ -135,7 +154,7 @@ def main():
     harmony = generate_harmony(
         chords=[harmony] + generate_notes(
             ['E4_2', 'D4_2', 'C4_1', 'D4_1', 'E4_2', 'C4_1', 'D4_1', 'E4_1', 'F4_1', 'E4_2',
-             'D4_1', 'E4_1', 'D4_1', 'E4_1', 'D4_1', 'C4_2', 'D4_1', 'C4_1', 'B3_9'],
+             'D4_1', 'E4_1', 'D4_1', 'E4_1', 'D4_1', 'C4_2', 'D4_1', 'C4_1', 'B3_5'],
             **melody_attributes
         ),
         start_times=[0, 0, 2, 4, 5, 6, 8, 9, 10, 11, 12, 14, 15, 16, 17, 18, 19, 21, 22, 23],
