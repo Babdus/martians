@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Union
 
 import numpy as np
 
@@ -6,8 +6,11 @@ from note import generate_note
 from schemas import Note
 
 
-def generate_harmony(chords: List[np.ndarray], start_times: List[float], sample_rate: int):
+def generate_harmony(chords: List[np.ndarray], start_times: Union[List[float], np.ndarray], sample_rate: int):
     length = 0
+
+    print(len(chords), len(start_times), start_times.shape[0])
+
     for i in range(len(start_times)):
         start_time = start_times[i]
         chord = chords[i]

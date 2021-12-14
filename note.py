@@ -24,6 +24,8 @@ def apply_attack(amp, i, attack_duration, attack_curve, sample_rate):
 
 
 def apply_decay(amp, i, decay_duration, decay_curve, sample_rate):
+    if i >= decay_duration * sample_rate:
+        return 0
     if decay_curve == Curve.linear:
         amp *= 1 - (i / (decay_duration * sample_rate))
     elif decay_curve == Curve.logarithmic:
