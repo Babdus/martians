@@ -6,11 +6,11 @@ import pandas as pd
 import sys
 
 def formant(herz, sigma, power, x):
-    return power * (1/np.cosh((x-herz)/sigma))
+    return math.exp(power * (1/np.cosh((x-herz)/sigma)))-1
 
 df = pd.read_csv('vowel.csv', index_col="vowel")
 
-row = df.loc['i']
+row = df.loc['e']
 
 v_f = { 0: lambda x: formant(row['f0_hz'], row['f0_σ'], row['f0_p'], x),
         1: lambda x: formant(row['f1_hz'], row['f1_σ'], row['f1_p'], x),
@@ -34,7 +34,7 @@ print(v_o)
 rate = 48000
 signal = []
 decay_rate = random.uniform(1,4)
-for i in range(rate * 5):
+for i in range(rate//2):
     value = 0
     if i/rate < 1:
         v = v_o
@@ -52,4 +52,4 @@ for i in range(rate * 5):
         value += math.sin(math.pi * 2 * overtone * (i / rate) * noise) * v[overtone] / 4
     signal.append(value)
 
-write('data/i.wav', rate, np.array(signal))
+write('data/e.wav', rate, np.array(signal))
