@@ -9,7 +9,7 @@ from schemas import Note
 def generate_harmony(chords: List[np.ndarray], start_times: Union[List[float], np.ndarray], sample_rate: int):
     length = 0
 
-    print(len(chords), len(start_times), start_times.shape[0])
+    # print(len(chords), len(start_times), start_times.shape[0])
 
     for i in range(len(start_times)):
         start_time = start_times[i]
@@ -36,7 +36,7 @@ def generate_notes(note_strings: List[str], **kwargs):
             note_value = note_list[0][:-1]
             octave = int(note_list[0][-1])
 
-            print(note_string, note_list, note_value, octave)
+            # print(note_string, note_list, note_value, octave)
 
             duration = float(note_list[1])
 
