@@ -10,6 +10,7 @@ def generate_formants(
         overtone_decay: Curve = Curve.exponential,
         overtone_random: float = 0.25,
         n_overtones: int = 16,
+        p: float = 2.0,
 ) -> Dict:
     formants = {}
     for i in range(n_overtones):
@@ -21,6 +22,8 @@ def generate_formants(
             formants[i] = 1 / (base_divisor + i)
         elif overtone_decay == Curve.quadratic:
             formants[i] = 1 / (base_divisor * (i + 1))
+        elif overtone_decay == Curve.polynomial:
+            formants[i] = (1-i**p/n_overtones**p)/base_divisor
         elif overtone_decay == Curve.exponential:
             formants[i] = 1 / (base_divisor ** (i + 1))
         else:

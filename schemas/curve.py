@@ -7,3 +7,4 @@ class Curve(Enum):
     linear = 2
     quadratic = 3
     exponential = 4
+    polynomial = 5

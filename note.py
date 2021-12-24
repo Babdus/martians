@@ -95,7 +95,7 @@ def generate_note(
             signal = np.array(wave)
 
     cut_limit = 1/2**gain
-    cut_signal = np.clip(signal, -cut_limit, cut_limit) / cut_limit
+    cut_signal = np.clip(signal/cut_limit, -cut_limit, cut_limit)
 
     # print(datetime.now()-start_time)
 
