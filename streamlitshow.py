@@ -32,9 +32,9 @@ def timbre(signal, frequency, sample_rate, duration, modifier_index):
     with st.expander('Timbre'):
         col1, col2 = st.columns([1, 1])
         with col1:
-            n_overtones = st.number_input('Number of overtones', min_value=1, max_value=100, value=20, step=1, key=f'overtones{modifier_index}')
+            n_overtones = st.number_input('Number of overtones', min_value=2, max_value=100, value=2, step=1, key=f'overtones{modifier_index}')
         with col2:
-            n_formants = st.number_input('Number of formants', min_value=0, max_value=10, value=3, step=1, key=f'formants{modifier_index}')
+            n_formants = st.number_input('Number of formants', min_value=0, max_value=10, value=0, step=1, key=f'formants{modifier_index}')
         n_overtones = int(n_overtones)
         n_formants = int(n_formants)
         samples_2 = np.linspace(frequency, frequency*n_overtones, n_overtones, endpoint=True)
@@ -136,6 +136,44 @@ def amplitude_envelope(signal, frequency, sample_rate, duration, modifier_index)
     return signal
 
 
+def overdrive(signal, frequency, sample_rate, duration, modifier_index):
+    with st.expander('Overdrive'):
+        gain = st.slider('Gain', min_value=1.0, max_value=20.0, value=1.0, step=0.1, key=f'gain{modifier_index}')
+
+        signal *= gain
+        signal = np.where(signal > 1, 1, signal)
+        signal = np.where(signal < -1, -1, signal)
+
+        show_signal(signal, duration, sample_rate)
+    return signal
+
+
+def shifted_copy(signal, frequency, sample_rate, duration, modifier_index):
+    with st.expander('Shifted copy'):
+        shift = st.slider('Shift', min_value=0.0, max_value=0.1, value=0.005, step=0.001, key=f'shit{modifier_index}')
+        shift_samples = int(sample_rate * shift)
+        shifted_signal = np.pad(signal, (shift_samples,), 'constant', constant_values=(0, 0))[:signal.shape[0]]
+        signal += shifted_signal
+        signal = signal / max(signal)
+
+        show_signal(signal, duration, sample_rate)
+    return signal
+
+
+def noise(signal, frequency, sample_rate, duration, modifier_index):
+    with st.expander('Noise'):
+        noise_amount = st.slider('Amount', min_value=0.0, max_value=1.0, value=0.1, step=0.01, key=f'noiseamount{modifier_index}')
+        noise_frequency = st.number_input('Frequency (Hz)', min_value=1, max_value=22050, value=4410, step=1, key=f'noisefreq{modifier_index}')
+        samples_1 = np.linspace(0, duration, int(sample_rate * duration), endpoint=False)
+        noise_wave = np.sin(2 * np.pi * noise_frequency * samples_1)
+        noise_wave *= np.random.rand(samples_1.shape[0]) * noise_amount
+        signal += noise_wave
+        signal = signal / max(signal)
+
+        show_signal(signal, duration, sample_rate)
+    return signal
+
+
 def reverse(signal, frequency, sample_rate, duration, modifier_index):
     with st.expander('Reverse'):
         signal = np.flip(signal)
@@ -153,12 +191,13 @@ def main():
     audio_file = open('data/შენ ხარ ვენახი.wav', 'rb')
     st.audio(audio_file.read())
 
+    st.subheader('Initial wave')
     col1, col2, col3 = st.columns([1, 1, 1])
 
     with col1:
         sample_rate = st.number_input('Sample rate', min_value=1000, max_value=192000, value=44100, step=1000)
     with col2:
-        frequency = st.number_input('Frequency (Hz)', min_value=1, max_value=22100, value=110, step=1)
+        frequency = st.number_input('Frequency (Hz)', min_value=1, max_value=22050, value=110, step=1)
     with col3:
         duration = st.slider('Duration (s)', min_value=0.0, max_value=12.0, value=1.0, step=0.125)
 
@@ -168,16 +207,17 @@ def main():
     samples_1 = np.linspace(0, duration, int(sample_rate * duration), endpoint=False)
     signal = np.sin(2 * np.pi * frequency * samples_1)
 
-    st.write(sample_rate)
-
     show_signal(signal, duration, sample_rate)
 
     function_mapper = {
         'None': none,
         'Reverse': reverse,
-        'Amplitude envelope': amplitude_envelope
+        'Amplitude envelope': amplitude_envelope,
+        'Overdrive': overdrive,
+        'Shifted copy': shifted_copy,
+        'Noise': noise
     }
-
+    st.subheader('Timbre')
     signal = timbre(signal, frequency, sample_rate, duration, -1)
 
     st.subheader('Modifiers')
@@ -187,7 +227,9 @@ def main():
         n_modifiers = int(n_modifiers)
 
     for index in range(n_modifiers):
-        modifier = st.selectbox('Select modifier', list(function_mapper.keys()), key=index)
+        col1, col2 = st.columns([1, 5])
+        with col1:
+            modifier = st.selectbox('Select modifier', list(function_mapper.keys()), key=index)
         signal = function_mapper[modifier](signal, frequency, sample_rate, duration, index)
 
     st.subheader('Final signal')
