@@ -150,6 +150,9 @@ def none(signal, frequency, sample_rate, duration, modifier_index):
 def main():
     st.sidebar.text('Sidebar')
 
+    audio_file = open('data/შენ ხარ ვენახი.wav', 'rb')
+    st.audio(audio_file.read())
+
     col1, col2, col3 = st.columns([1, 1, 1])
 
     with col1:
@@ -189,6 +192,11 @@ def main():
 
     st.subheader('Final signal')
     show_signal(signal, duration, sample_rate)
+
+    file_name = st.text_input('File name')
+    save_button = st.button('Save to file', on_click=write_wav, args=(f'data/{file_name}', sample_rate, signal))
+    if save_button:
+        st.write(f'Saved at data/{file_name}.wav')
 
 
 if __name__ == '__main__':
