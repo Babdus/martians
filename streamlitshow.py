@@ -15,12 +15,16 @@ def create_audio_player(audio_data, sample_rate):
     return virtual_file
 
 
-def show_signal(signal, duration, sample_rate):
+def plot_signal(signal, duration, sample_rate, figsize):
     samples_1 = np.linspace(0, duration, int(sample_rate * duration), endpoint=False)
-    fig_1, ax_1 = plt.subplots(figsize=(10, 3))
+    fig_1, ax_1 = plt.subplots(figsize=figsize)
     ax_1.plot(samples_1, signal)
     st.pyplot(fig_1)
 
+
+def show_signal(signal, duration, sample_rate, figsize=(20, 3)):
+    st.text('Signal')
+    plot_signal(signal, duration, sample_rate, figsize=figsize)
     st.audio(create_audio_player(signal, sample_rate))
 
 
@@ -31,9 +35,10 @@ def timbre(signal, frequency, sample_rate, duration, modifier_index):
             n_overtones = st.number_input('Number of overtones', min_value=1, max_value=100, value=20, step=1, key=f'overtones{modifier_index}')
         with col2:
             n_formants = st.number_input('Number of formants', min_value=0, max_value=10, value=3, step=1, key=f'formants{modifier_index}')
-
+        n_overtones = int(n_overtones)
+        n_formants = int(n_formants)
         samples_2 = np.linspace(frequency, frequency*n_overtones, n_overtones, endpoint=True)
-        fig_2, ax_2 = plt.subplots(figsize=(10, 3))
+        fig_2, ax_2 = plt.subplots(figsize=(20, 3))
         ax_2.bar(samples_2, np.ones(samples_2.shape))
         st.pyplot(fig_2, key=f'plot1{modifier_index}')
 
@@ -54,19 +59,78 @@ def timbre(signal, frequency, sample_rate, duration, modifier_index):
             bell_curve = bell_curve_raw / np.max(bell_curve_raw) * amplitude
             bell_curve_sum += bell_curve
 
+        if n_formants == 0:
+            bell_curve_sum = np.ones(samples_3.shape)
+
         bell_curve_sum = bell_curve_sum / np.max(bell_curve_sum)
-        fig_4, ax_4 = plt.subplots(figsize=(10, 3))
+        fig_4, ax_4 = plt.subplots(figsize=(20, 3))
         ax_4.plot(samples_3, bell_curve_sum)
 
-        padded_bell_curve_sum = np.pad(bell_curve_sum, (math.floor(frequency/2), math.ceil(frequency/2)), 'constant', constant_values=(bell_curve_sum[0], bell_curve_sum[-1]))
+        padded_bell_curve_sum = np.pad(bell_curve_sum, (math.floor(frequency/2), math.ceil(frequency/2)), 'edge')
         overtones = padded_bell_curve_sum.reshape(-1, frequency).mean(axis=1)
         ax_4.bar(samples_2, overtones)
         st.pyplot(fig_4, key=f'plot2{modifier_index}')
 
-        st.write(overtones)
+        overtones = overtones / np.max(overtones)
 
-        for overtone in overtones:
-            pass
+        samples_1 = np.linspace(0, duration, int(sample_rate * duration), endpoint=False)
+        last_signal_max = np.max(signal)
+        signal = np.zeros(samples_1.shape)
+        for overtone, amplitude in enumerate(overtones, start=1):
+            signal += np.sin(2 * np.pi * frequency*overtone * samples_1) * amplitude
+
+        signal = (signal * last_signal_max) / np.max(signal)
+
+        show_signal(signal, duration, sample_rate)
+
+    return signal
+
+
+def amplitude_envelope(signal, frequency, sample_rate, duration, modifier_index):
+    with st.expander('Amplitude Envelope'):
+        samples_1 = np.linspace(0, duration, int(sample_rate * duration), endpoint=False)
+        col1, col2 = st.columns([1, 1])
+        with col1:
+            st.text('Attack')
+        with col2:
+            st.text('Decay')
+
+        col1, col2, col3, col4, col5 = st.columns([3, 3, 2, 2, 2])
+
+        with col1:
+            attack_duration = st.number_input('Duration', min_value=0.0, max_value=duration, value=0.05, step=0.05, key=f'ampenv{modifier_index}attdur')
+        with col2:
+            attack_degree = st.number_input('Curve', min_value=-5.0, max_value=5.0, value=0.0, step=0.1, key=f'ampenv{modifier_index}attdeg')
+
+        with col3:
+            decay_start = st.number_input('Starting time', min_value=0.0, max_value=duration, value=0.05, step=0.0, key=f'ampenv{modifier_index}decst')
+        with col4:
+            decay_duration = st.number_input('Duration', min_value=0.0, max_value=duration * 100, value=0.05, step=0.05, key=f'ampenv{modifier_index}decdur')
+        with col5:
+            decay_degree = st.number_input('Curve', min_value=-5.0, max_value=5.0, value=0.0, step=0.1, key=f'ampenv{modifier_index}decdeg')
+
+        col1, col2 = st.columns([1, 1])
+
+        with col1:
+            attack_curve = np.power(samples_1, 2 ** attack_degree) / np.power(attack_duration, 2 ** attack_degree)
+            attack_curve = np.where(attack_curve > 1, 1, attack_curve)
+            plot_signal(attack_curve, duration, sample_rate, figsize=(10, 2))
+        with col2:
+
+            samples_2 = np.linspace(0, decay_duration, int(sample_rate * decay_duration), endpoint=False)
+
+            decay_curve = 1 - np.power(samples_2, 2 ** decay_degree) / np.power(decay_duration, 2 ** decay_degree)
+            decay_curve = np.where(decay_curve > 1, 1, decay_curve)
+            decay_curve = np.where(decay_curve < 0, 0, decay_curve)
+            n_samples_before_start_decay = int(decay_start * sample_rate)
+            n_samples_after_end_decay = int(sample_rate * duration) - n_samples_before_start_decay - int(sample_rate * decay_duration)
+            n_samples_after_end_decay = n_samples_after_end_decay if n_samples_after_end_decay > 0 else 0
+            decay_curve = np.pad(decay_curve, (n_samples_before_start_decay, n_samples_after_end_decay), 'edge')
+            decay_curve = decay_curve[:int(sample_rate * duration)]
+            plot_signal(decay_curve, duration, sample_rate, figsize=(10, 2))
+
+        signal *= attack_curve * decay_curve
+        show_signal(signal, duration, sample_rate)
 
     return signal
 
@@ -79,29 +143,41 @@ def reverse(signal, frequency, sample_rate, duration, modifier_index):
 
 
 def main():
+    st.sidebar.text('Sidebar')
+
     col1, col2, col3 = st.columns([1, 1, 1])
 
     with col1:
         sample_rate = st.number_input('Sample rate', min_value=1000, max_value=192000, value=44100, step=1000)
     with col2:
-        frequency = st.number_input('Frequency (Hz)', min_value=1, max_value=sample_rate, value=110, step=1)
+        frequency = st.number_input('Frequency (Hz)', min_value=1, max_value=22100, value=110, step=1)
     with col3:
         duration = st.number_input('Duration (s)', min_value=0.0, max_value=30.0, value=1.0, step=0.125)
 
+    sample_rate = int(sample_rate)
+    frequency = int(frequency)
+
     samples_1 = np.linspace(0, duration, int(sample_rate * duration), endpoint=False)
     signal = np.sin(2 * np.pi * frequency * samples_1)
+
+    st.write(sample_rate)
+
     show_signal(signal, duration, sample_rate)
 
     function_mapper = {
         'Timbre': timbre,
         'Reverse': reverse,
+        'Amplitude envelope': amplitude_envelope
     }
+
+    signal = timbre(signal, frequency, sample_rate, duration, -1)
 
     st.subheader('Modifiers')
     n_modifiers = st.number_input('Number of signal modifiers', min_value=0, max_value=20, value=0, step=1)
+    n_modifiers = int(n_modifiers)
 
     for index in range(n_modifiers):
-        modifier = st.selectbox('Select modifier', ['Timbre', 'Reverse'], key=index)
+        modifier = st.selectbox('Select modifier', list(function_mapper.keys()), key=index)
         signal = function_mapper[modifier](signal, frequency, sample_rate, duration, index)
 
     st.subheader('Final signal')
@@ -109,4 +185,5 @@ def main():
 
 
 if __name__ == '__main__':
+    st.set_page_config(layout="wide", page_title="Audio signal laboratory")
     main()
