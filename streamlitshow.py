@@ -98,16 +98,16 @@ def amplitude_envelope(signal, frequency, sample_rate, duration, modifier_index)
         col1, col2, col3, col4, col5 = st.columns([3, 3, 2, 2, 2])
 
         with col1:
-            attack_duration = st.number_input('Duration', min_value=0.0, max_value=duration, value=0.05, step=0.05, key=f'ampenv{modifier_index}attdur')
+            attack_duration = st.slider('Duration', min_value=0.0, max_value=duration, value=0.05, step=0.01, key=f'ampenv{modifier_index}attdur')
         with col2:
-            attack_degree = st.number_input('Curve', min_value=-5.0, max_value=5.0, value=0.0, step=0.1, key=f'ampenv{modifier_index}attdeg')
+            attack_degree = st.slider('Curve', min_value=-5.0, max_value=5.0, value=0.0, step=0.1, key=f'ampenv{modifier_index}attdeg')
 
         with col3:
-            decay_start = st.number_input('Starting time', min_value=0.0, max_value=duration, value=0.05, step=0.0, key=f'ampenv{modifier_index}decst')
+            decay_start = st.slider('Starting time', min_value=0.0, max_value=duration, value=0.05, step=0.01, key=f'ampenv{modifier_index}decst')
         with col4:
-            decay_duration = st.number_input('Duration', min_value=0.0, max_value=duration * 100, value=0.05, step=0.05, key=f'ampenv{modifier_index}decdur')
+            decay_duration = st.slider('Duration', min_value=0.0, max_value=duration * 5, value=0.05, step=0.01, key=f'ampenv{modifier_index}decdur')
         with col5:
-            decay_degree = st.number_input('Curve', min_value=-5.0, max_value=5.0, value=0.0, step=0.1, key=f'ampenv{modifier_index}decdeg')
+            decay_degree = st.slider('Curve', min_value=-5.0, max_value=5.0, value=0.0, step=0.1, key=f'ampenv{modifier_index}decdeg')
 
         col1, col2 = st.columns([1, 1])
 
@@ -119,6 +119,7 @@ def amplitude_envelope(signal, frequency, sample_rate, duration, modifier_index)
 
             samples_2 = np.linspace(0, decay_duration, int(sample_rate * decay_duration), endpoint=False)
 
+            decay_degree = -decay_degree
             decay_curve = 1 - np.power(samples_2, 2 ** decay_degree) / np.power(decay_duration, 2 ** decay_degree)
             decay_curve = np.where(decay_curve > 1, 1, decay_curve)
             decay_curve = np.where(decay_curve < 0, 0, decay_curve)
@@ -142,6 +143,10 @@ def reverse(signal, frequency, sample_rate, duration, modifier_index):
     return signal
 
 
+def none(signal, frequency, sample_rate, duration, modifier_index):
+    return signal
+
+
 def main():
     st.sidebar.text('Sidebar')
 
@@ -152,7 +157,7 @@ def main():
     with col2:
         frequency = st.number_input('Frequency (Hz)', min_value=1, max_value=22100, value=110, step=1)
     with col3:
-        duration = st.number_input('Duration (s)', min_value=0.0, max_value=30.0, value=1.0, step=0.125)
+        duration = st.slider('Duration (s)', min_value=0.0, max_value=12.0, value=1.0, step=0.125)
 
     sample_rate = int(sample_rate)
     frequency = int(frequency)
@@ -165,7 +170,7 @@ def main():
     show_signal(signal, duration, sample_rate)
 
     function_mapper = {
-        'Timbre': timbre,
+        'None': none,
         'Reverse': reverse,
         'Amplitude envelope': amplitude_envelope
     }
@@ -173,8 +178,10 @@ def main():
     signal = timbre(signal, frequency, sample_rate, duration, -1)
 
     st.subheader('Modifiers')
-    n_modifiers = st.number_input('Number of signal modifiers', min_value=0, max_value=20, value=0, step=1)
-    n_modifiers = int(n_modifiers)
+    col1, col2 = st.columns([1, 5])
+    with col1:
+        n_modifiers = st.number_input('Number of signal modifiers', min_value=0, max_value=20, value=0, step=1)
+        n_modifiers = int(n_modifiers)
 
     for index in range(n_modifiers):
         modifier = st.selectbox('Select modifier', list(function_mapper.keys()), key=index)
