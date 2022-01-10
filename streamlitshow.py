@@ -188,8 +188,8 @@ def none(signal, frequency, sample_rate, duration, modifier_index):
 def main():
     st.sidebar.text('Sidebar')
 
-    audio_file = open('data/შენ ხარ ვენახი.wav', 'rb')
-    st.audio(audio_file.read())
+    # audio_file = open('data/შენ ხარ ვენახი.wav', 'rb')
+    # st.audio(audio_file.read())
 
     st.subheader('Initial wave')
     col1, col2, col3 = st.columns([1, 1, 1])
