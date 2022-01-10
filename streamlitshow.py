@@ -236,7 +236,7 @@ def main():
     show_signal(signal, duration, sample_rate)
 
     file_name = st.text_input('File name')
-    save_button = st.button('Save to file', on_click=write_wav, args=(f'data/{file_name}', sample_rate, signal))
+    save_button = st.button('Save to file', on_click=write_wav, args=(f'data/{file_name}.wav', sample_rate, signal))
     if save_button:
         st.write(f'Saved at data/{file_name}.wav')
 
