@@ -221,13 +221,13 @@ def main():
     signal = timbre(signal, frequency, sample_rate, duration, -1)
 
     st.subheader('Modifiers')
-    col1, col2 = st.columns([1, 5])
+    col1, col2 = st.columns([1, 2])
     with col1:
         n_modifiers = st.number_input('Number of signal modifiers', min_value=0, max_value=20, value=0, step=1)
         n_modifiers = int(n_modifiers)
 
     for index in range(n_modifiers):
-        col1, col2 = st.columns([1, 5])
+        col1, col2 = st.columns([1, 2])
         with col1:
             modifier = st.selectbox('Select modifier', list(function_mapper.keys()), key=index)
         signal = function_mapper[modifier](signal, frequency, sample_rate, duration, index)
