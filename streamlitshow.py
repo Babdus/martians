@@ -7,6 +7,44 @@ import streamlit as st
 from scipy.io.wavfile import write as write_wav
 from scipy.stats import norm
 
+constants = ['e', 'pi']
+
+np_functions = [
+    'power',
+    'abs',
+    'sqrt',
+    'exp',
+    'log10',
+    'log2',
+    'log',
+    'arcsinh',
+    'arccosh',
+    'arctanh',
+    'arcsin',
+    'arccos',
+    'arctan',
+    'sinh',
+    'cosh',
+    'tanh',
+    'sin',
+    'cos',
+    'tan',
+]
+
+
+def function_parser(f):
+    f = f.replace(' ', '')
+    f = f.replace('^', '**')
+    if 'x' not in f:
+        f = f'(x/x)*({f})'
+    for constant in constants:
+        f = f.replace(constant, f'math.{constant}')
+    for i, func in enumerate(np_functions):
+        f = f.replace(func, chr(i + 65))
+    for i in range(len(np_functions)):
+        f = f.replace(chr(i + 65), f'np.{np_functions[i]}')
+    return f
+
 
 def create_audio_player(audio_data, sample_rate):
     virtual_file = io.BytesIO()
@@ -136,6 +174,19 @@ def amplitude_envelope(signal, frequency, sample_rate, duration, modifier_index)
     return signal
 
 
+def amplitude_custom_function(signal, frequency, sample_rate, duration, modifier_index):
+    with st.expander('Amplitude custom function'):
+        f = st.text_input('y = ', key=f'ampfunc{modifier_index}', value='x')
+        st.caption('Permitted symbols are "x", numbers, constants e and pi, operators +-*/^, the parentheses (), and functions abs, sqrt, exp, log, log2, log10, sin, cos, tan, arcsin, arccos, arctan, sinh, cosh, tanh, arcsinh, arccosh, arctanh')
+        f = function_parser(f)
+        x = np.linspace(0, duration, int(sample_rate * duration), endpoint=False)
+        y = eval(f)
+        plot_signal(y, duration, sample_rate, figsize=(20, 3))
+        signal *= y
+        show_signal(signal, duration, sample_rate)
+    return signal
+
+
 def overdrive(signal, frequency, sample_rate, duration, modifier_index):
     with st.expander('Overdrive'):
         gain = st.slider('Gain', min_value=1.0, max_value=20.0, value=1.0, step=0.1, key=f'gain{modifier_index}')
@@ -213,6 +264,7 @@ def main():
         'None': none,
         'Reverse': reverse,
         'Amplitude envelope': amplitude_envelope,
+        'Amplitude custom function': amplitude_custom_function,
         'Overdrive': overdrive,
         'Shifted copy': shifted_copy,
         'Noise': noise
