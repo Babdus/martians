@@ -92,7 +92,7 @@ def timbre(signal, frequency, sample_rate, duration, modifier_index):
             with col2:
                 sigma = st.number_input('Sigma (Hz)', min_value=1.0, max_value=float(sample_rate), value=100.0 * (formant+1), step=50.0, key=f'sigma{formant}{modifier_index}')
             with col3:
-                amplitude = st.number_input('Amplitude', min_value=0.0, max_value=1.0, value=1 - 0.1 * formant, step=0.05, key=f'amplitude{formant}{modifier_index}')
+                amplitude = st.number_input('Amplitude (Pa)', min_value=0.0, max_value=1.0, value=1 - 0.1 * formant, step=0.05, key=f'amplitude{formant}{modifier_index}')
 
             bell_curve_raw = norm.pdf(samples_3, mu, sigma)
             bell_curve = bell_curve_raw / np.max(bell_curve_raw) * amplitude
@@ -137,16 +137,16 @@ def amplitude_envelope(signal, frequency, sample_rate, duration, modifier_index)
         col1, col2, col3, col4, col5 = st.columns([3, 3, 2, 2, 2])
 
         with col1:
-            attack_duration = st.slider('Duration', min_value=0.0, max_value=duration, value=0.05, step=0.01, key=f'ampenv{modifier_index}attdur')
+            attack_duration = st.slider('Duration (s)', min_value=0.0, max_value=duration, value=0.05, step=0.01, key=f'ampenv{modifier_index}attdur')
         with col2:
-            attack_degree = st.slider('Curve', min_value=-5.0, max_value=5.0, value=0.0, step=0.1, key=f'ampenv{modifier_index}attdeg')
+            attack_degree = st.slider('Curve (Pa/exp(s))', min_value=-5.0, max_value=5.0, value=0.0, step=0.1, key=f'ampenv{modifier_index}attdeg')
 
         with col3:
-            decay_start = st.slider('Starting time', min_value=0.0, max_value=duration, value=0.05, step=0.01, key=f'ampenv{modifier_index}decst')
+            decay_start = st.slider('Starting time (s)', min_value=0.0, max_value=duration, value=0.05, step=0.01, key=f'ampenv{modifier_index}decst')
         with col4:
-            decay_duration = st.slider('Duration', min_value=0.0, max_value=duration * 5, value=0.05, step=0.01, key=f'ampenv{modifier_index}decdur')
+            decay_duration = st.slider('Duration (s)', min_value=0.0, max_value=duration * 5, value=0.05, step=0.01, key=f'ampenv{modifier_index}decdur')
         with col5:
-            decay_degree = st.slider('Curve', min_value=-5.0, max_value=5.0, value=0.0, step=0.1, key=f'ampenv{modifier_index}decdeg')
+            decay_degree = st.slider('Curve (Pa/exp(s))', min_value=-5.0, max_value=5.0, value=0.0, step=0.1, key=f'ampenv{modifier_index}decdeg')
 
         col1, col2 = st.columns([1, 1])
 
@@ -177,8 +177,9 @@ def amplitude_envelope(signal, frequency, sample_rate, duration, modifier_index)
 
 def amplitude_custom_function(signal, frequency, sample_rate, duration, modifier_index):
     with st.expander('Amplitude custom function'):
+        st.caption('Amplitude (Pa) as a function of time (s)')
         f = st.text_input('y =', key=f'ampfunc{modifier_index}', value='x')
-        st.caption('Permitted symbols are "x", numbers, constants e and pi, operators +-*/^, the parentheses (), and functions abs, round, sqrt, log, log2, log10, sin, cos, tan, arcsin, arccos, arctan, sinh, cosh, tanh, arcsinh, arccosh, arctanh')
+        st.caption('Permitted symbols are "x", numbers, constants "e" and "pi", operators +-*/^, the parentheses (), and functions abs, round, sqrt, log, log2, log10, sin, cos, tan, arcsin, arccos, arctan, sinh, cosh, tanh, arcsinh, arccosh, arctanh')
         f = function_parser(f)
         x = np.linspace(0, duration, int(sample_rate * duration), endpoint=False)
         y = eval(f)
@@ -190,7 +191,7 @@ def amplitude_custom_function(signal, frequency, sample_rate, duration, modifier
 
 def overdrive(signal, frequency, sample_rate, duration, modifier_index):
     with st.expander('Overdrive'):
-        gain = st.slider('Gain', min_value=1.0, max_value=20.0, value=1.0, step=0.1, key=f'gain{modifier_index}')
+        gain = st.slider('Gain (Pa)', min_value=1.0, max_value=20.0, value=1.0, step=0.1, key=f'gain{modifier_index}')
 
         signal *= gain
         signal = np.where(signal > 1, 1, signal)
@@ -202,7 +203,7 @@ def overdrive(signal, frequency, sample_rate, duration, modifier_index):
 
 def shifted_copy(signal, frequency, sample_rate, duration, modifier_index):
     with st.expander('Shifted copy'):
-        shift = st.slider('Shift', min_value=0.0, max_value=0.1, value=0.005, step=0.001, key=f'shit{modifier_index}')
+        shift = st.slider('Shift (s)', min_value=0.0, max_value=0.1, value=0.005, step=0.001, key=f'shit{modifier_index}')
         shift_samples = int(sample_rate * shift)
         shifted_signal = np.pad(signal, (shift_samples,), 'constant', constant_values=(0, 0))[:signal.shape[0]]
         signal += shifted_signal
@@ -214,7 +215,7 @@ def shifted_copy(signal, frequency, sample_rate, duration, modifier_index):
 
 def noise(signal, frequency, sample_rate, duration, modifier_index):
     with st.expander('Noise'):
-        noise_amount = st.slider('Amount', min_value=0.0, max_value=1.0, value=0.1, step=0.01, key=f'noiseamount{modifier_index}')
+        noise_amount = st.slider('Amount (Pa)', min_value=0.0, max_value=1.0, value=0.1, step=0.01, key=f'noiseamount{modifier_index}')
         noise_frequency = st.number_input('Frequency (Hz)', min_value=1, max_value=22050, value=4410, step=1, key=f'noisefreq{modifier_index}')
         samples_1 = np.linspace(0, duration, int(sample_rate * duration), endpoint=False)
         noise_wave = np.sin(2 * np.pi * noise_frequency * samples_1)
@@ -247,7 +248,7 @@ def main():
     col1, col2, col3 = st.columns([1, 1, 1])
 
     with col1:
-        sample_rate = st.number_input('Sample rate', min_value=1000, max_value=192000, value=44100, step=1000)
+        sample_rate = st.number_input('Sample rate (Hz)', min_value=1000, max_value=192000, value=44100, step=1000)
     with col2:
         frequency = st.number_input('Frequency (Hz)', min_value=1, max_value=22050, value=110, step=1)
     with col3:
