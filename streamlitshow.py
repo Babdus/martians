@@ -13,7 +13,6 @@ np_functions = [
     'power',
     'abs',
     'sqrt',
-    'exp',
     'log10',
     'log2',
     'log',
@@ -29,6 +28,7 @@ np_functions = [
     'sin',
     'cos',
     'tan',
+    'rint'
 ]
 
 
@@ -39,6 +39,7 @@ def function_parser(f):
         f = f'(x/x)*({f})'
     for constant in constants:
         f = f.replace(constant, f'math.{constant}')
+    f = f.replace('round', 'rint')
     for i, func in enumerate(np_functions):
         f = f.replace(func, chr(i + 65))
     for i in range(len(np_functions)):
@@ -176,8 +177,8 @@ def amplitude_envelope(signal, frequency, sample_rate, duration, modifier_index)
 
 def amplitude_custom_function(signal, frequency, sample_rate, duration, modifier_index):
     with st.expander('Amplitude custom function'):
-        f = st.text_input('y = ', key=f'ampfunc{modifier_index}', value='x')
-        st.caption('Permitted symbols are "x", numbers, constants e and pi, operators +-*/^, the parentheses (), and functions abs, sqrt, exp, log, log2, log10, sin, cos, tan, arcsin, arccos, arctan, sinh, cosh, tanh, arcsinh, arccosh, arctanh')
+        f = st.text_input('y =', key=f'ampfunc{modifier_index}', value='x')
+        st.caption('Permitted symbols are "x", numbers, constants e and pi, operators +-*/^, the parentheses (), and functions abs, round, sqrt, log, log2, log10, sin, cos, tan, arcsin, arccos, arctan, sinh, cosh, tanh, arcsinh, arccosh, arctanh')
         f = function_parser(f)
         x = np.linspace(0, duration, int(sample_rate * duration), endpoint=False)
         y = eval(f)
