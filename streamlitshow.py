@@ -238,23 +238,16 @@ def none(signal, frequency, sample_rate, duration, modifier_index):
     return signal
 
 
-def main():
-    st.sidebar.text('Sidebar')
-
-    # audio_file = open('data/შენ ხარ ვენახი.wav', 'rb')
-    # st.audio(audio_file.read())
-
+def generate_signal(i_signal, sample_rate):
+    st.header(f'Signal {i_signal+1}')
     st.subheader('Initial wave')
-    col1, col2, col3 = st.columns([1, 1, 1])
+    col1, col2 = st.columns([1, 1])
 
     with col1:
-        sample_rate = st.number_input('Sample rate (Hz)', min_value=1000, max_value=192000, value=44100, step=1000)
+        frequency = st.number_input('Frequency (Hz)', min_value=1, max_value=22050, value=110, step=1, key=f'freq{i_signal}')
     with col2:
-        frequency = st.number_input('Frequency (Hz)', min_value=1, max_value=22050, value=110, step=1)
-    with col3:
-        duration = st.slider('Duration (s)', min_value=0.0, max_value=12.0, value=1.0, step=0.125)
+        duration = st.slider('Duration (s)', min_value=0.0, max_value=12.0, value=1.0, step=0.125, key=f'duration{i_signal}')
 
-    sample_rate = int(sample_rate)
     frequency = int(frequency)
 
     samples_1 = np.linspace(0, duration, int(sample_rate * duration), endpoint=False)
@@ -272,27 +265,91 @@ def main():
         'Noise': noise
     }
     st.subheader('Timbre')
-    signal = timbre(signal, frequency, sample_rate, duration, -1)
+    signal = timbre(signal, frequency, sample_rate, duration, f'{i_signal}-1')
 
     st.subheader('Modifiers')
     col1, col2 = st.columns([1, 2])
     with col1:
-        n_modifiers = st.number_input('Number of signal modifiers', min_value=0, max_value=20, value=0, step=1)
+        n_modifiers = st.number_input('Number of signal modifiers', min_value=0, max_value=20, value=0, step=1, key=f'nmodifiers{i_signal}')
         n_modifiers = int(n_modifiers)
 
     for index in range(n_modifiers):
         col1, col2 = st.columns([1, 2])
         with col1:
-            modifier = st.selectbox('Select modifier', list(function_mapper.keys()), key=index)
-        signal = function_mapper[modifier](signal, frequency, sample_rate, duration, index)
+            modifier = st.selectbox('Select modifier', list(function_mapper.keys()), key=f'{i_signal}{index}')
+        signal = function_mapper[modifier](signal, frequency, sample_rate, duration, f'{i_signal}{index}')
 
     st.subheader('Final signal')
     show_signal(signal, duration, sample_rate)
 
-    file_name = st.text_input('File name')
-    save_button = st.button('Save to file', on_click=write_wav, args=(f'data/{file_name}.wav', sample_rate, signal))
+    file_name = st.text_input('File name', key=f'filename{i_signal}')
+    save_button = st.button('Save to file', on_click=write_wav, args=(f'data/{file_name}.wav', sample_rate, signal), key=f'savebutton{i_signal}')
     if save_button:
         st.write(f'Saved at data/{file_name}.wav')
+
+    return signal
+
+
+def mixer(signals, sample_rate):
+    bit_rate = st.slider('Bit rate', min_value=15, max_value=960, value=120, key='bitrate')
+    bit_duration = 60 / bit_rate
+    col1, col2 = st.columns([1, 1])
+    with col1:
+        bits_per_bar = st.number_input('Bits per bar', min_value=1, max_value=16, value=8, key='bitsperbar')
+        bits_per_bar = int(bits_per_bar)
+    with col2:
+        notes_per_bit = st.number_input('Notes per bit', min_value=1, max_value=16, value=4, key='notesperbit')
+        notes_per_bit = int(notes_per_bit)
+
+    bar_duration = bit_duration * bits_per_bar
+    sample_per_bit = int(bit_duration * sample_rate)
+    sample_per_bar = sample_per_bit * bits_per_bar
+    final_signal = np.zeros(sample_per_bar)
+
+    st.text('Select signals')
+    columns = st.columns(bits_per_bar)
+    for i, col in enumerate(columns):
+        with col:
+            for j in range(notes_per_bit):
+                i_signal = st.selectbox('', [None] + list(range(len(signals))), key=f'signalselect{j}{i}')
+
+                if i_signal is None:
+                    continue
+                signal = signals[i_signal]
+                if len(signal) + sample_per_bit * i > sample_per_bar:
+                    final_signal[sample_per_bit * i:sample_per_bit * (i + 1)] += signal[:sample_per_bit]
+                else:
+                    final_signal[sample_per_bit * i:sample_per_bit * i + len(signal)] += signal
+    show_signal(final_signal, bar_duration, sample_rate)
+
+    file_name = st.text_input('File name', key=f'filenamefinal')
+    save_button = st.button('Save to file', on_click=write_wav, args=(f'data/{file_name}.wav', sample_rate, final_signal),
+                            key=f'savebuttonfinal')
+    if save_button:
+        st.write(f'Saved at data/{file_name}.wav')
+
+
+def main():
+    st.sidebar.text('Sidebar')
+
+    # audio_file = open('data/შენ ხარ ვენახი.wav', 'rb')
+    # st.audio(audio_file.read())
+
+    col1, col2 = st.columns([1, 1])
+
+    with col1:
+        sample_rate = st.number_input('Sample rate (Hz)', min_value=1000, max_value=192000, value=44100, step=1000,
+                                      key=f'samplerate')
+        sample_rate = int(sample_rate)
+    with col2:
+        n_signals = st.number_input('Number of signals', min_value=1, max_value=64, value=1, step=1)
+    n_signals = int(n_signals)
+    signals = []
+    for i_signal in range(n_signals):
+        signal = generate_signal(i_signal, sample_rate)
+        signals.append(signal)
+
+    mixer(signals, sample_rate)
 
 
 if __name__ == '__main__':
