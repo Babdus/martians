@@ -76,19 +76,20 @@ def timbre(signal, frequency, sample_rate, duration, modifier_index):
             n_formants = st.number_input('Number of formants', min_value=0, max_value=10, value=0, step=1, key=f'formants{modifier_index}')
         n_overtones = int(n_overtones)
         n_formants = int(n_formants)
-        samples_2 = np.linspace(frequency, frequency*n_overtones, n_overtones, endpoint=True)
+        int_frequency = int(frequency)
+        samples_2 = np.linspace(int_frequency, int_frequency*n_overtones, n_overtones, endpoint=True)
         fig_2, ax_2 = plt.subplots(figsize=(20, 3))
         ax_2.bar(samples_2, np.ones(samples_2.shape))
         st.pyplot(fig_2, key=f'plot1{modifier_index}')
 
-        samples_3 = np.arange(frequency, frequency*n_overtones, 1)
+        samples_3 = np.arange(int_frequency, int_frequency*n_overtones, 1)
         bell_curve_sum = np.zeros(samples_3.shape)
 
         for formant in range(n_formants):
             st.text(f'Formant {formant+1}')
             col1, col2, col3 = st.columns([1, 1, 1])
             with col1:
-                mu = st.number_input('Mu (Hz)', min_value=frequency, max_value=sample_rate, value=frequency * (formant+1), step=50, key=f'mu{formant}{modifier_index}')
+                mu = st.number_input('Mu (Hz)', min_value=int_frequency, max_value=sample_rate, value=int_frequency * (formant+1), step=50, key=f'mu{formant}{modifier_index}')
             with col2:
                 sigma = st.number_input('Sigma (Hz)', min_value=1.0, max_value=float(sample_rate), value=100.0 * (formant+1), step=50.0, key=f'sigma{formant}{modifier_index}')
             with col3:
@@ -105,8 +106,8 @@ def timbre(signal, frequency, sample_rate, duration, modifier_index):
         fig_4, ax_4 = plt.subplots(figsize=(20, 3))
         ax_4.plot(samples_3, bell_curve_sum)
 
-        padded_bell_curve_sum = np.pad(bell_curve_sum, (math.floor(frequency/2), math.ceil(frequency/2)), 'edge')
-        overtones = padded_bell_curve_sum.reshape(-1, frequency).mean(axis=1)
+        padded_bell_curve_sum = np.pad(bell_curve_sum, (math.floor(int_frequency/2), math.ceil(int_frequency/2)), 'edge')
+        overtones = padded_bell_curve_sum.reshape(-1, int_frequency).mean(axis=1)
         ax_4.bar(samples_2, overtones)
         st.pyplot(fig_4, key=f'plot2{modifier_index}')
 
@@ -244,11 +245,9 @@ def generate_signal(i_signal, sample_rate):
     col1, col2 = st.columns([1, 1])
 
     with col1:
-        frequency = st.number_input('Frequency (Hz)', min_value=1, max_value=22050, value=110, step=1, key=f'freq{i_signal}')
+        frequency = st.number_input('Frequency (Hz)', min_value=1.0, max_value=22050.0, value=110.0, step=1.0, key=f'freq{i_signal}')
     with col2:
         duration = st.slider('Duration (s)', min_value=0.0, max_value=12.0, value=1.0, step=0.125, key=f'duration{i_signal}')
-
-    frequency = int(frequency)
 
     samples_1 = np.linspace(0, duration, int(sample_rate * duration), endpoint=False)
     signal = np.sin(2 * np.pi * frequency * samples_1)
@@ -317,7 +316,7 @@ def mixer(signals, sample_rate):
                     continue
                 signal = signals[i_signal]
                 if len(signal) + sample_per_bit * i > sample_per_bar:
-                    final_signal[sample_per_bit * i:sample_per_bit * (i + 1)] += signal[:sample_per_bit]
+                    final_signal[sample_per_bit * i:] += signal[:sample_per_bar-sample_per_bit * i]
                 else:
                     final_signal[sample_per_bit * i:sample_per_bit * i + len(signal)] += signal
     show_signal(final_signal, bar_duration, sample_rate)
