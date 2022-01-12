@@ -240,7 +240,7 @@ def none(signal, frequency, sample_rate, duration, modifier_index):
 
 
 def generate_signal(i_signal, sample_rate):
-    st.header(f'Signal {i_signal+1}')
+    st.header(f'Signal {i_signal}')
     st.subheader('Initial wave')
     col1, col2 = st.columns([1, 1])
 
