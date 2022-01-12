@@ -290,6 +290,7 @@ def generate_signal(i_signal, sample_rate):
 
 
 def mixer(signals, sample_rate):
+    st.header('Mixer')
     bit_rate = st.slider('Bit rate', min_value=15, max_value=960, value=120, key='bitrate')
     bit_duration = 60 / bit_rate
     col1, col2 = st.columns([1, 1])
