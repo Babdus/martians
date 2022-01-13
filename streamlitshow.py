@@ -3,6 +3,7 @@ import math
 
 import matplotlib.pyplot as plt
 import numpy as np
+import soundfile as sf
 import streamlit as st
 from scipy.io.wavfile import write as write_wav
 from scipy.stats import norm
@@ -49,7 +50,8 @@ def function_parser(f):
 
 def create_audio_player(audio_data, sample_rate):
     virtual_file = io.BytesIO()
-    write_wav(virtual_file, rate=sample_rate, data=audio_data)
+    sf.write(virtual_file, audio_data, sample_rate, subtype='PCM_24', format='wav')
+    # write_wav(virtual_file, rate=sample_rate, data=audio_data)
 
     return virtual_file
 
