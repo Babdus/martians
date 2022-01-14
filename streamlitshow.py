@@ -69,7 +69,7 @@ def show_signal(signal, duration, sample_rate, figsize=(20, 3)):
     st.audio(create_audio_player(signal, sample_rate))
 
 
-def timbre(signal, frequency, sample_rate, duration, modifier_index):
+def timbre(signal, frequency, frequency_function, sample_rate, duration, modifier_index):
     with st.expander('Timbre'):
         col1, col2 = st.columns([1, 1])
         with col1:
@@ -119,7 +119,7 @@ def timbre(signal, frequency, sample_rate, duration, modifier_index):
         last_signal_max = np.max(signal)
         signal = np.zeros(samples_1.shape)
         for overtone, amplitude in enumerate(overtones, start=1):
-            signal += np.sin(2 * np.pi * frequency*overtone * samples_1) * amplitude
+            signal += np.sin(2 * np.pi * frequency_function * overtone * samples_1) * amplitude
 
         signal = (signal * last_signal_max) / np.max(signal)
 
@@ -251,8 +251,25 @@ def generate_signal(i_signal, sample_rate):
     with col2:
         duration = st.slider('Duration (s)', min_value=0.0, max_value=12.0, value=1.0, step=0.125, key=f'duration{i_signal}')
 
+    st.caption('Frequency (Hz) as a function of time (s)')
+    col1, col2 = st.columns([1, 1])
+
+    with col1:
+        f = st.text_input('y =', key=f'freqfunc{i_signal}', value='x')
+        st.caption(
+            'Permitted symbols are "x", numbers, constants "e" and "pi", operators +-*/^, the parentheses (), '
+            'and functions abs, round, sqrt, log, log2, log10, sin, cos, tan, arcsin, arccos, arctan, sinh, cosh, tanh, '
+            'arcsinh, arccosh, arctanh')
+        f = function_parser(f)
+        x = np.linspace(0, duration, int(sample_rate * duration), endpoint=False)
+        frequency_function = eval(f)
+        frequency_function = np.nan_to_num(frequency_function, nan=0.0)
+    with col2:
+        plot_signal(frequency_function, duration, sample_rate, figsize=(20, 3))
+
     samples_1 = np.linspace(0, duration, int(sample_rate * duration), endpoint=False)
-    signal = np.sin(2 * np.pi * frequency * samples_1)
+
+    signal = np.sin(2 * np.pi * frequency_function * samples_1)
 
     show_signal(signal, duration, sample_rate)
 
@@ -266,7 +283,13 @@ def generate_signal(i_signal, sample_rate):
         'Noise': noise
     }
     st.subheader('Timbre')
-    signal = timbre(signal, frequency, sample_rate, duration, f'{i_signal}-1')
+    signal = timbre(
+        signal=signal,
+        frequency=frequency,
+        frequency_function=frequency_function,
+        sample_rate=sample_rate,
+        duration=duration,
+        modifier_index=f'{i_signal}-1')
 
     st.subheader('Modifiers')
     col1, col2 = st.columns([1, 2])
