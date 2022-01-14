@@ -57,7 +57,7 @@ def create_audio_player(audio_data, sample_rate):
 
 
 def plot_signal(signal, duration, sample_rate, figsize):
-    samples_1 = np.linspace(0, duration, int(sample_rate * duration), endpoint=False)
+    samples_1 = np.linspace(0, duration, round(sample_rate * duration), endpoint=False)
     fig_1, ax_1 = plt.subplots(figsize=figsize)
     ax_1.plot(samples_1, signal)
     st.pyplot(fig_1)
@@ -326,10 +326,12 @@ def mixer(signals, sample_rate):
         notes_per_bit = st.number_input('Notes per bit', min_value=1, max_value=16, value=4, key='notesperbit')
         notes_per_bit = int(notes_per_bit)
 
-    bar_duration = bit_duration * bits_per_bar
     sample_per_bit = int(bit_duration * sample_rate)
     sample_per_bar = sample_per_bit * bits_per_bar
+    bar_duration = (sample_per_bit * bits_per_bar) / sample_rate
     final_signal = np.zeros(sample_per_bar)
+
+    st.write(final_signal.shape)
 
     st.text('Select signals')
     columns = st.columns(bits_per_bar)
