@@ -287,7 +287,7 @@ def generate_signal(i_signal, sample_rate):
     if save_button:
         st.write(f'Saved at data/{file_name}.wav')
 
-    return signal, {'duration': duration, 'frequency_function': frequency_function, 'timbre': timbre_properties} | modifier_properties
+    return signal, {'duration': duration, 'frequency_function': frequency_function, 'timbre': timbre_properties, 'modifier_properties': modifier_properties}
 
 
 def mixer(signals, sample_rate):
