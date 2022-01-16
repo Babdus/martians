@@ -1,57 +1,27 @@
 import io
-import math
 
 import matplotlib.pyplot as plt
 import numpy as np
 import soundfile as sf
 import streamlit as st
 from scipy.io.wavfile import write as write_wav
-from scipy.stats import norm
 
-constants = ['e', 'pi']
-
-np_functions = [
-    'power',
-    'abs',
-    'sqrt',
-    'log10',
-    'log2',
-    'log',
-    'arcsinh',
-    'arccosh',
-    'arctanh',
-    'arcsin',
-    'arccos',
-    'arctan',
-    'sinh',
-    'cosh',
-    'tanh',
-    'sin',
-    'cos',
-    'tan',
-    'rint'
-]
-
-
-def function_parser(f):
-    f = f.replace(' ', '')
-    f = f.replace('^', '**')
-    if 'x' not in f:
-        f = f'(x/x)*({f})'
-    for constant in constants:
-        f = f.replace(constant, f'math.{constant}')
-    f = f.replace('round', 'rint')
-    for i, func in enumerate(np_functions):
-        f = f.replace(func, chr(i + 65))
-    for i in range(len(np_functions)):
-        f = f.replace(chr(i + 65), f'np.{np_functions[i]}')
-    return f
+from calculations import get_samples, get_sine_wave, function_parser, parse_frequency_function, get_formant, \
+    add_overtones_to_signal, reverse_signal, add_noise, shift_signal, add_gain, parse_amplitude_function, \
+    modify_amplitude_with_function
 
 
 def create_audio_player(audio_data, sample_rate):
     virtual_file = io.BytesIO()
     sf.write(virtual_file, audio_data, sample_rate, subtype='PCM_24', format='wav')
     return virtual_file
+
+
+def get_overtones_figure(overtones):
+    samples = get_samples(len(overtones), 1, start=1)
+    fig, ax = plt.subplots(figsize=(20, 3))
+    ax.bar(samples, overtones)
+    return fig
 
 
 def plot_signal(signal, duration, sample_rate, figsize):
@@ -67,28 +37,7 @@ def show_signal(signal, duration, sample_rate, figsize=(20, 3)):
     st.audio(create_audio_player(signal, sample_rate))
 
 
-def initialize_signal(duration, sample_rate):
-    return np.zeros(get_samples(duration, sample_rate).shape)
-
-
-def get_overtones_figure(n_overtones):
-    samples = get_samples(n_overtones, 1, start=1)
-    fig, ax = plt.subplots(figsize=(20, 3))
-    ax.bar(samples, np.ones(samples.shape))
-    return fig
-
-
-def initialize_formant_function(n_overtones, value=0.0):
-    return np.full(n_overtones, value)
-
-
-def get_formant(n_overtones, mu, sigma, amplitude):
-    samples = get_samples(n_overtones, 1, start=1)
-    bell_curve = norm.pdf(samples, mu, sigma)
-    return bell_curve / np.max(bell_curve) * amplitude
-
-
-def timbre(signal, frequency, frequency_function, sample_rate, duration, modifier_index):
+def timbre(signal, frequency_function, sample_rate, duration, modifier_index):
     with st.expander('Timbre'):
         col1, col2 = st.columns([1, 1])
         with col1:
@@ -112,51 +61,55 @@ def timbre(signal, frequency, frequency_function, sample_rate, duration, modifie
             )
             n_formants = int(n_formants)
 
-        figure = get_overtones_figure(n_overtones)
-        st.pyplot(figure, key=f'plot1{modifier_index}')
-
-        formant_function = initialize_formant_function(n_overtones)
-
+        formants = []
         for formant in range(n_formants):
             st.text(f'Formant {formant+1}')
             col1, col2, col3 = st.columns([1, 1, 1])
             with col1:
-                mu = st.number_input('Mu (Hz)', min_value=0, max_value=n_overtones*2, value=formant*4+1, step=1, key=f'mu{formant}{modifier_index}')
+                mu = st.number_input(
+                    'Mu (Hz)',
+                    min_value=0.0,
+                    max_value=n_overtones*2.0,
+                    value=formant*4+1.0,
+                    step=1.0,
+                    key=f'mu{formant}{modifier_index}'
+                )
             with col2:
-                sigma = st.number_input('Sigma (Hz)', min_value=1.0, max_value=float(sample_rate), value=1.0, step=50.0, key=f'sigma{formant}{modifier_index}')
+                sigma = st.number_input(
+                    'Sigma (Hz)',
+                    min_value=0.001,
+                    max_value=float(sample_rate),
+                    value=1.0,
+                    step=1.0,
+                    key=f'sigma{formant}{modifier_index}'
+                )
             with col3:
-                amplitude = st.number_input('Amplitude (Pa)', min_value=0.0, max_value=1.0, value=1 - 0.2 * formant, step=0.05, key=f'amplitude{formant}{modifier_index}')
+                amplitude = st.number_input(
+                    'Amplitude (Pa)',
+                    min_value=0.0,
+                    max_value=1.0,
+                    value=1 - 0.2 * formant,
+                    step=0.05,
+                    key=f'amplitude{formant}{modifier_index}'
+                )
+            formants.append({'mu': mu, 'sigma': sigma, 'amplitude': amplitude})
 
-            formant_function += get_formant(n_overtones, mu, sigma, amplitude)
-
-        if n_formants == 0:
-            formant_function = initialize_formant_function(n_overtones, 1.0)
-
-        samples = get_samples(n_overtones, 1, start=1)
-
-        formant_function = formant_function / np.max(formant_function)
-        fig_4, ax_4 = plt.subplots(figsize=(20, 3))
-        ax_4.plot(samples, formant_function)
-
-        overtones = formant_function
-        ax_4.bar(samples, overtones)
-        st.pyplot(fig_4, key=f'plot2{modifier_index}')
-
-        overtones = overtones / np.max(overtones)
-
-        last_signal_max = np.max(signal)
-        signal = initialize_signal(duration, sample_rate)
-        for overtone, amplitude in enumerate(overtones, start=1):
-            signal += get_sine_wave(frequency_function * overtone, duration, sample_rate, amplitude)
-
-        signal = (signal * last_signal_max) / np.max(signal)
-
+        signal, overtones = add_overtones_to_signal(
+            signal,
+            frequency_function,
+            duration,
+            sample_rate,
+            formants,
+            n_overtones
+        )
+        figure = get_overtones_figure(overtones)
+        st.pyplot(figure)
         show_signal(signal, duration, sample_rate)
 
-    return signal
+    return signal, {'n_overtones': n_overtones, 'formants': formants}
 
 
-def amplitude_envelope(signal, frequency, sample_rate, duration, modifier_index):
+def amplitude_envelope(signal, sample_rate, duration, modifier_index):
     with st.expander('Amplitude Envelope'):
         samples_1 = np.linspace(0, duration, int(sample_rate * duration), endpoint=False)
         col1, col2 = st.columns([1, 1])
@@ -206,84 +159,57 @@ def amplitude_envelope(signal, frequency, sample_rate, duration, modifier_index)
     return signal
 
 
-def amplitude_custom_function(signal, frequency, sample_rate, duration, modifier_index):
+def amplitude_custom_function(signal, sample_rate, duration, modifier_index):
     with st.expander('Amplitude custom function'):
         st.caption('Amplitude (Pa) as a function of time (s)')
         f = st.text_input('y =', key=f'ampfunc{modifier_index}', value='x')
-        st.caption('Permitted symbols are "x", numbers, constants "e" and "pi", operators +-*/^, the parentheses (), and functions abs, round, sqrt, log, log2, log10, sin, cos, tan, arcsin, arccos, arctan, sinh, cosh, tanh, arcsinh, arccosh, arctanh')
-        f = function_parser(f)
-        x = np.linspace(0, duration, int(sample_rate * duration), endpoint=False)
-        y = eval(f)
+        st.caption('Permitted symbols are "x", numbers, constants "e" and "pi", operators +-*/^, the parentheses (), '
+                   'and functions abs, round, sqrt, log, log2, log10, sin, cos, tan, arcsin, arccos, arctan, sinh, '
+                   'cosh, tanh, arcsinh, arccosh, arctanh')
+        y = parse_amplitude_function(f, duration, sample_rate)
         plot_signal(y, duration, sample_rate, figsize=(20, 3))
-        signal *= y
+        signal = modify_amplitude_with_function(signal, y)
         show_signal(signal, duration, sample_rate)
-    return signal
+    return signal, {'f': f}
 
 
-def overdrive(signal, frequency, sample_rate, duration, modifier_index):
+def overdrive(signal, sample_rate, duration, modifier_index):
     with st.expander('Overdrive'):
         gain = st.slider('Gain (Pa)', min_value=1.0, max_value=20.0, value=1.0, step=0.1, key=f'gain{modifier_index}')
-
-        signal *= gain
-        signal = np.where(signal > 1, 1, signal)
-        signal = np.where(signal < -1, -1, signal)
-
+        signal = add_gain(signal, gain)
         show_signal(signal, duration, sample_rate)
-    return signal
+    return signal, {'gain': gain}
 
 
-def shifted_copy(signal, frequency, sample_rate, duration, modifier_index):
+def shifted_copy(signal, sample_rate, duration, modifier_index):
     with st.expander('Shifted copy'):
-        shift = st.slider('Shift (s)', min_value=0.0, max_value=0.1, value=0.005, step=0.001, key=f'shit{modifier_index}')
-        shift_samples = int(sample_rate * shift)
-        shifted_signal = np.pad(signal, (shift_samples,), 'constant', constant_values=(0, 0))[:signal.shape[0]]
-        signal += shifted_signal
-        signal = signal / max(signal)
-
+        shift = st.slider('Shift (s)', min_value=0.0, max_value=0.1, value=0.005,
+                          step=0.001, key=f'shit{modifier_index}')
+        signal = shift_signal(signal, shift, sample_rate)
         show_signal(signal, duration, sample_rate)
-    return signal
+    return signal, {'shift': shift}
 
 
-def noise(signal, frequency, sample_rate, duration, modifier_index):
+def noise(signal, sample_rate, duration, modifier_index):
     with st.expander('Noise'):
-        noise_amount = st.slider('Amount (Pa)', min_value=0.0, max_value=1.0, value=0.1, step=0.01, key=f'noiseamount{modifier_index}')
-        noise_frequency = st.number_input('Frequency (Hz)', min_value=1, max_value=22050, value=4410, step=1, key=f'noisefreq{modifier_index}')
-        samples_1 = np.linspace(0, duration, int(sample_rate * duration), endpoint=False)
-        noise_wave = np.sin(2 * np.pi * noise_frequency * samples_1)
-        noise_wave *= np.random.rand(samples_1.shape[0]) * noise_amount
-        signal += noise_wave
-        signal = signal / max(signal)
-
+        noise_amount = st.slider('Amount (Pa)', min_value=0.0, max_value=1.0, value=0.1,
+                                 step=0.01, key=f'noiseamount{modifier_index}')
+        noise_frequency = st.number_input('Frequency (Hz)', min_value=1, max_value=22050, value=4410,
+                                          step=1, key=f'noisefreq{modifier_index}')
+        signal = add_noise(signal, duration, sample_rate, noise_frequency, noise_amount)
         show_signal(signal, duration, sample_rate)
-    return signal
+    return signal, {'noise_amount': noise_amount, 'noise_frequency': noise_frequency}
 
 
-def reverse(signal, frequency, sample_rate, duration, modifier_index):
+def reverse(signal, sample_rate, duration, modifier_index):
     with st.expander('Reverse'):
-        signal = np.flip(signal)
+        signal = reverse_signal(signal)
         show_signal(signal, duration, sample_rate)
-    return signal
+    return signal, {'reverse': True}
 
 
-def none(signal, frequency, sample_rate, duration, modifier_index):
-    return signal
-
-
-def get_samples(length, sample_rate, start=0):
-    return np.linspace(start, length+start, int(sample_rate * length), endpoint=False)
-
-
-def parse_frequency_function(frequency_function_string, duration, sample_rate):
-    f = function_parser(frequency_function_string)
-    x = get_samples(duration, sample_rate)
-    frequency_function = eval(f)
-    frequency_function = np.nan_to_num(frequency_function, nan=0.0)
-    return frequency_function
-
-
-def get_sine_wave(frequency, duration, sample_rate, amplitude=1):
-    samples = get_samples(duration, sample_rate)
-    return np.sin(2 * np.pi * frequency * samples) * amplitude
+def none(signal, sample_rate, duration, modifier_index):
+    return signal, {}
 
 
 def generate_signal(i_signal, sample_rate):
@@ -291,15 +217,6 @@ def generate_signal(i_signal, sample_rate):
     st.subheader('Initial wave')
     col1, col2 = st.columns([1, 1])
 
-    with col1:
-        frequency = st.number_input(
-            'Frequency (Hz)',
-            min_value=1.0,
-            max_value=22050.0,
-            value=110.0,
-            step=1.0,
-            key=f'freq{i_signal}'
-        )
     with col2:
         duration = st.slider(
             'Duration (s)',
@@ -309,11 +226,8 @@ def generate_signal(i_signal, sample_rate):
             step=0.125,
             key=f'duration{i_signal}'
         )
-
-    st.caption('Frequency (Hz) as a function of time (s)')
-    col1, col2 = st.columns([1, 1])
-
     with col1:
+        st.caption('Frequency (Hz) as a function of time (s)')
         frequency_function_string = st.text_input('y =', key=f'freqfunc{i_signal}', value='x')
         st.caption(
             'Permitted symbols are "x", numbers, constants "e" and "pi", operators +-*/^, the parentheses (), '
@@ -321,7 +235,6 @@ def generate_signal(i_signal, sample_rate):
             ' arcsinh, arccosh, arctanh'
         )
         frequency_function = parse_frequency_function(frequency_function_string, duration, sample_rate)
-    with col2:
         plot_signal(frequency_function, duration, sample_rate, figsize=(20, 3))
 
     signal = get_sine_wave(frequency_function, duration, sample_rate)
@@ -337,9 +250,8 @@ def generate_signal(i_signal, sample_rate):
         'Noise': noise
     }
     st.subheader('Timbre')
-    signal = timbre(
+    signal, timbre_properties = timbre(
         signal=signal,
-        frequency=frequency,
         frequency_function=frequency_function,
         sample_rate=sample_rate,
         duration=duration,
@@ -349,14 +261,23 @@ def generate_signal(i_signal, sample_rate):
     st.subheader('Modifiers')
     col1, col2 = st.columns([1, 2])
     with col1:
-        n_modifiers = st.number_input('Number of signal modifiers', min_value=0, max_value=20, value=0, step=1, key=f'nmodifiers{i_signal}')
+        n_modifiers = st.number_input(
+            'Number of signal modifiers',
+            min_value=0,
+            max_value=20,
+            value=0,
+            step=1,
+            key=f'nmodifiers{i_signal}'
+        )
         n_modifiers = int(n_modifiers)
 
+    modifier_properties = {}
     for index in range(n_modifiers):
         col1, col2 = st.columns([1, 2])
         with col1:
             modifier = st.selectbox('Select modifier', list(function_mapper.keys()), key=f'{i_signal}{index}')
-        signal = function_mapper[modifier](signal, frequency, sample_rate, duration, f'{i_signal}{index}')
+        signal, properties = function_mapper[modifier](signal, sample_rate, duration, f'{i_signal}{index}')
+        modifier_properties[modifier] = properties
 
     st.subheader('Final signal')
     show_signal(signal, duration, sample_rate)
@@ -366,7 +287,7 @@ def generate_signal(i_signal, sample_rate):
     if save_button:
         st.write(f'Saved at data/{file_name}.wav')
 
-    return signal
+    return signal, {'duration': duration, 'frequency_function': frequency_function, 'timbre': timbre_properties} | modifier_properties
 
 
 def mixer(signals, sample_rate):
@@ -397,7 +318,7 @@ def mixer(signals, sample_rate):
 
                 if i_signal is None:
                     continue
-                signal = signals[i_signal]
+                signal = signals[i_signal]['signal']
                 if len(signal) + sample_per_bit * i > sample_per_bar:
                     final_signal[sample_per_bit * i:] += signal[:sample_per_bar-sample_per_bit * i]
                 else:
@@ -434,8 +355,8 @@ def main():
     n_signals = int(n_signals)
     signals = []
     for i_signal in range(n_signals):
-        signal = generate_signal(i_signal, sample_rate)
-        signals.append(signal)
+        signal, properties = generate_signal(i_signal, sample_rate)
+        signals.append({'signal': signal, 'properties': properties})
 
     mixer(signals, sample_rate)
 
