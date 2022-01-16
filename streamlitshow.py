@@ -1,14 +1,13 @@
 import io
 
 import matplotlib.pyplot as plt
-import numpy as np
 import soundfile as sf
 import streamlit as st
 from scipy.io.wavfile import write as write_wav
 
-from calculations import get_samples, get_sine_wave, function_parser, parse_frequency_function, get_formant, \
+from calculations import get_samples, get_sine_wave, parse_frequency_function, \
     add_overtones_to_signal, reverse_signal, add_noise, shift_signal, add_gain, parse_amplitude_function, \
-    modify_amplitude_with_function, get_attack_curve, get_decay_degree, apply_attack_and_decay, signal_pipeline
+    modify_amplitude_with_function, get_attack_curve, get_decay_degree, apply_attack_and_decay, mix
 
 
 def create_audio_player(audio_data, sample_rate):
@@ -256,35 +255,30 @@ def generate_signal(i_signal, sample_rate):
 
 def mixer(signals, sample_rate):
     st.header('Mixer')
-    bit_rate = st.slider('Bit rate', min_value=15, max_value=960, value=120, key='bitrate')
-    bit_duration = 60 / bit_rate
+    bpm = st.slider('BPM', min_value=15, max_value=960, value=120, key='bpm')
+
     col1, col2 = st.columns([1, 1])
     with col1:
-        bits_per_bar = st.number_input('Bits per bar', min_value=1, max_value=16, value=8, key='bitsperbar')
-        bits_per_bar = int(bits_per_bar)
+        beats_per_bar = st.number_input('Beats per bar', min_value=1, max_value=16, value=8, key='beatsperbar')
+        beats_per_bar = int(beats_per_bar)
     with col2:
-        notes_per_bit = st.number_input('Notes per bit', min_value=1, max_value=16, value=4, key='notesperbit')
-        notes_per_bit = int(notes_per_bit)
+        notes_per_beat = st.number_input('Notes per beat', min_value=1, max_value=16, value=4, key='notesperbeat')
+        notes_per_beat = int(notes_per_beat)
 
-    sample_per_bit = int(bit_duration * sample_rate)
-    sample_per_bar = sample_per_bit * bits_per_bar
-    bar_duration = (sample_per_bit * bits_per_bar) / sample_rate
-    final_signal = np.zeros(sample_per_bar)
+    signal_index_matrix = []
 
     st.text('Select signals')
-    columns = st.columns(bits_per_bar)
+    columns = st.columns(beats_per_bar)
     for i, col in enumerate(columns):
+        signal_index_column = []
         with col:
-            for j in range(notes_per_bit):
+            for j in range(notes_per_beat):
                 i_signal = st.selectbox('', [None] + list(range(len(signals))), key=f'signalselect{j}{i}')
+                signal_index_column.append(i_signal)
+        signal_index_matrix.append(signal_index_column)
 
-                if i_signal is None:
-                    continue
-                signal = signals[i_signal]['signal']
-                if len(signal) + sample_per_bit * i > sample_per_bar:
-                    final_signal[sample_per_bit * i:] += signal[:sample_per_bar-sample_per_bit * i]
-                else:
-                    final_signal[sample_per_bit * i:sample_per_bit * i + len(signal)] += signal
+    final_signal, bar_duration = mix(signals, sample_rate, bpm, beats_per_bar, signal_index_matrix)
+
     show_signal(final_signal, bar_duration, sample_rate)
 
     file_name = st.text_input('File name', key=f'filenamefinal')

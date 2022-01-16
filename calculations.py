@@ -191,3 +191,22 @@ def signal_pipeline(properties, sample_rate):
                                            sample_rate)
             signal = apply_attack_and_decay(signal, attack_curve, decay_curve)
     return signal
+
+
+def mix(signals, sample_rate, bpm, beats_per_bar, signal_index_matrix):
+    beat_duration = 60 / bpm
+    sample_per_beat = int(beat_duration * sample_rate)
+    sample_per_bar = sample_per_beat * beats_per_bar
+    bar_duration = (sample_per_beat * beats_per_bar) / sample_rate
+    final_signal = np.zeros(sample_per_bar)
+
+    for i, column in enumerate(signal_index_matrix):
+        for j, i_signal in enumerate(column):
+            if i_signal is None:
+                continue
+            signal = signals[i_signal]['signal']
+            if len(signal) + sample_per_beat * i > sample_per_bar:
+                final_signal[sample_per_beat * i:] += signal[:sample_per_bar - sample_per_beat * i]
+            else:
+                final_signal[sample_per_beat * i:sample_per_beat * i + len(signal)] += signal
+    return final_signal, bar_duration
