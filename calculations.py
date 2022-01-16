@@ -1,5 +1,5 @@
 import numpy as np
-from matplotlib import pyplot as plt
+import math
 from scipy.stats import norm
 
 constants = ['e', 'pi']
@@ -128,4 +128,66 @@ def parse_amplitude_function(f, duration, sample_rate):
 
 def modify_amplitude_with_function(signal, y):
     signal *= y
+    return signal
+
+
+def get_attack_curve(attack_duration, attack_degree, duration, sample_rate):
+    samples = get_samples(duration, sample_rate)
+    attack_curve = np.power(samples, 2 ** attack_degree) / np.power(attack_duration, 2 ** attack_degree)
+    attack_curve = np.where(attack_curve > 1, 1, attack_curve)
+    return attack_curve
+
+
+def get_decay_degree(decay_start, decay_duration, decay_degree, duration, sample_rate):
+    samples = get_samples(decay_duration, sample_rate)
+    decay_degree = -decay_degree
+    decay_curve = 1 - np.power(samples, 2 ** decay_degree) / np.power(decay_duration, 2 ** decay_degree)
+    decay_curve = np.where(decay_curve > 1, 1, decay_curve)
+    decay_curve = np.where(decay_curve < 0, 0, decay_curve)
+    n_samples_before_start_decay = int(decay_start * sample_rate)
+    n_samples_after_end_decay = int(sample_rate * duration) - n_samples_before_start_decay - int(
+        sample_rate * decay_duration)
+    n_samples_after_end_decay = n_samples_after_end_decay if n_samples_after_end_decay > 0 else 0
+    decay_curve = np.pad(decay_curve, (n_samples_before_start_decay, n_samples_after_end_decay), 'edge')
+    decay_curve = decay_curve[:int(sample_rate * duration)]
+    return decay_curve
+
+
+def apply_attack_and_decay(signal, attack_curve, decay_curve):
+    signal *= attack_curve * decay_curve
+    return signal
+
+
+def signal_pipeline(properties, sample_rate):
+    duration = properties['duration']
+    frequency_function_string = properties['frequency_function_string']
+    frequency_function = parse_frequency_function(frequency_function_string, duration, sample_rate)
+    signal = get_sine_wave(frequency_function, duration, sample_rate)
+
+    n_overtones = properties['timbre']['n_overtones']
+    formants = properties['timbre']['formants']
+    signal, overtones = add_overtones_to_signal(signal, frequency_function, duration, sample_rate, formants,
+                                                n_overtones)
+    for modifier_properties in properties['modifier_properties']:
+        if 'Reverse' in modifier_properties:
+            signal = reverse_signal(signal)
+        elif 'Overdrive' in modifier_properties:
+            signal = add_gain(signal, modifier_properties['Overdrive']['gain'])
+        elif 'Shifted copy' in modifier_properties:
+            signal = shift_signal(signal, modifier_properties['Shifted copy']['shift'], sample_rate)
+        elif 'Noise' in modifier_properties:
+            signal = add_noise(signal, duration, sample_rate, modifier_properties['Noise']['noise_frequency'],
+                               modifier_properties['Noise']['noise_amount'])
+        elif 'Amplitude custom function' in modifier_properties:
+            y = parse_amplitude_function(modifier_properties['Amplitude custom function']['f'], duration, sample_rate)
+            signal = modify_amplitude_with_function(signal, y)
+        elif 'Amplitude envelope' in modifier_properties:
+            attack_curve = get_attack_curve(modifier_properties['Amplitude envelope']['attack_duration'],
+                                            modifier_properties['Amplitude envelope']['attack_degree'], duration,
+                                            sample_rate)
+            decay_curve = get_decay_degree(modifier_properties['Amplitude envelope']['decay_start'],
+                                           modifier_properties['Amplitude envelope']['decay_duration'],
+                                           modifier_properties['Amplitude envelope']['decay_degree'], duration,
+                                           sample_rate)
+            signal = apply_attack_and_decay(signal, attack_curve, decay_curve)
     return signal

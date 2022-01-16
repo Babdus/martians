@@ -8,7 +8,7 @@ from scipy.io.wavfile import write as write_wav
 
 from calculations import get_samples, get_sine_wave, function_parser, parse_frequency_function, get_formant, \
     add_overtones_to_signal, reverse_signal, add_noise, shift_signal, add_gain, parse_amplitude_function, \
-    modify_amplitude_with_function
+    modify_amplitude_with_function, get_attack_curve, get_decay_degree, apply_attack_and_decay, signal_pipeline
 
 
 def create_audio_player(audio_data, sample_rate):
@@ -41,24 +41,12 @@ def timbre(signal, frequency_function, sample_rate, duration, modifier_index):
     with st.expander('Timbre'):
         col1, col2 = st.columns([1, 1])
         with col1:
-            n_overtones = st.number_input(
-                'Number of overtones',
-                min_value=1,
-                max_value=100,
-                value=20,
-                step=1,
-                key=f'overtones{modifier_index}'
-            )
+            n_overtones = st.number_input('Number of overtones', min_value=1, max_value=100, value=20, step=1,
+                                          key=f'overtones{modifier_index}')
             n_overtones = int(n_overtones)
         with col2:
-            n_formants = st.number_input(
-                'Number of formants',
-                min_value=0,
-                max_value=10,
-                value=3,
-                step=1,
-                key=f'formants{modifier_index}'
-            )
+            n_formants = st.number_input('Number of formants', min_value=0, max_value=10, value=3, step=1,
+                                         key=f'formants{modifier_index}')
             n_formants = int(n_formants)
 
         formants = []
@@ -66,42 +54,18 @@ def timbre(signal, frequency_function, sample_rate, duration, modifier_index):
             st.text(f'Formant {formant+1}')
             col1, col2, col3 = st.columns([1, 1, 1])
             with col1:
-                mu = st.number_input(
-                    'Mu (Hz)',
-                    min_value=0.0,
-                    max_value=n_overtones*2.0,
-                    value=formant*4+1.0,
-                    step=1.0,
-                    key=f'mu{formant}{modifier_index}'
-                )
+                mu = st.number_input('Mu (Hz)', min_value=0.0, max_value=n_overtones*2.0, value=formant*4+1.0, step=1.0,
+                                     key=f'mu{formant}{modifier_index}')
             with col2:
-                sigma = st.number_input(
-                    'Sigma (Hz)',
-                    min_value=0.001,
-                    max_value=float(sample_rate),
-                    value=1.0,
-                    step=1.0,
-                    key=f'sigma{formant}{modifier_index}'
-                )
+                sigma = st.number_input('Sigma (Hz)', min_value=0.001, max_value=float(sample_rate), value=1.0,
+                                        step=1.0, key=f'sigma{formant}{modifier_index}')
             with col3:
-                amplitude = st.number_input(
-                    'Amplitude (Pa)',
-                    min_value=0.0,
-                    max_value=1.0,
-                    value=1 - 0.2 * formant,
-                    step=0.05,
-                    key=f'amplitude{formant}{modifier_index}'
-                )
+                amplitude = st.number_input('Amplitude (Pa)', min_value=0.0, max_value=1.0, value=1 - 0.2 * formant,
+                                            step=0.05, key=f'amplitude{formant}{modifier_index}')
             formants.append({'mu': mu, 'sigma': sigma, 'amplitude': amplitude})
 
-        signal, overtones = add_overtones_to_signal(
-            signal,
-            frequency_function,
-            duration,
-            sample_rate,
-            formants,
-            n_overtones
-        )
+        signal, overtones = add_overtones_to_signal(signal, frequency_function, duration, sample_rate, formants,
+                                                    n_overtones)
         figure = get_overtones_figure(overtones)
         st.pyplot(figure)
         show_signal(signal, duration, sample_rate)
@@ -111,7 +75,6 @@ def timbre(signal, frequency_function, sample_rate, duration, modifier_index):
 
 def amplitude_envelope(signal, sample_rate, duration, modifier_index):
     with st.expander('Amplitude Envelope'):
-        samples_1 = np.linspace(0, duration, int(sample_rate * duration), endpoint=False)
         col1, col2 = st.columns([1, 1])
         with col1:
             st.text('Attack')
@@ -121,42 +84,37 @@ def amplitude_envelope(signal, sample_rate, duration, modifier_index):
         col1, col2, col3, col4, col5 = st.columns([3, 3, 2, 2, 2])
 
         with col1:
-            attack_duration = st.slider('Duration (s)', min_value=0.0, max_value=duration, value=0.05, step=0.01, key=f'ampenv{modifier_index}attdur')
+            attack_duration = st.slider('Duration (s)', min_value=0.0, max_value=duration, value=0.05, step=0.01,
+                                        key=f'ampenv{modifier_index}attdur')
         with col2:
-            attack_degree = st.slider('Curve (Pa/exp(s))', min_value=-5.0, max_value=5.0, value=0.0, step=0.1, key=f'ampenv{modifier_index}attdeg')
+            attack_degree = st.slider('Curve (Pa/exp(s))', min_value=-5.0, max_value=5.0, value=0.0, step=0.1,
+                                      key=f'ampenv{modifier_index}attdeg')
 
         with col3:
-            decay_start = st.slider('Starting time (s)', min_value=0.0, max_value=duration, value=0.05, step=0.01, key=f'ampenv{modifier_index}decst')
+            decay_start = st.slider('Starting time (s)', min_value=0.0, max_value=duration, value=0.05, step=0.01,
+                                    key=f'ampenv{modifier_index}decst')
         with col4:
-            decay_duration = st.slider('Duration (s)', min_value=0.0, max_value=duration * 5, value=0.05, step=0.01, key=f'ampenv{modifier_index}decdur')
+            decay_duration = st.slider('Duration (s)', min_value=0.0, max_value=duration * 5, value=0.05, step=0.01,
+                                       key=f'ampenv{modifier_index}decdur')
         with col5:
-            decay_degree = st.slider('Curve (Pa/exp(s))', min_value=-5.0, max_value=5.0, value=0.0, step=0.1, key=f'ampenv{modifier_index}decdeg')
+            decay_degree = st.slider('Curve (Pa/exp(s))', min_value=-5.0, max_value=5.0, value=0.0, step=0.1,
+                                     key=f'ampenv{modifier_index}decdeg')
 
         col1, col2 = st.columns([1, 1])
 
+        attack_curve = get_attack_curve(attack_duration, attack_degree, duration, sample_rate)
+        decay_curve = get_decay_degree(decay_start, decay_duration, decay_degree, duration, sample_rate)
+
         with col1:
-            attack_curve = np.power(samples_1, 2 ** attack_degree) / np.power(attack_duration, 2 ** attack_degree)
-            attack_curve = np.where(attack_curve > 1, 1, attack_curve)
             plot_signal(attack_curve, duration, sample_rate, figsize=(10, 2))
         with col2:
-
-            samples_2 = np.linspace(0, decay_duration, int(sample_rate * decay_duration), endpoint=False)
-
-            decay_degree = -decay_degree
-            decay_curve = 1 - np.power(samples_2, 2 ** decay_degree) / np.power(decay_duration, 2 ** decay_degree)
-            decay_curve = np.where(decay_curve > 1, 1, decay_curve)
-            decay_curve = np.where(decay_curve < 0, 0, decay_curve)
-            n_samples_before_start_decay = int(decay_start * sample_rate)
-            n_samples_after_end_decay = int(sample_rate * duration) - n_samples_before_start_decay - int(sample_rate * decay_duration)
-            n_samples_after_end_decay = n_samples_after_end_decay if n_samples_after_end_decay > 0 else 0
-            decay_curve = np.pad(decay_curve, (n_samples_before_start_decay, n_samples_after_end_decay), 'edge')
-            decay_curve = decay_curve[:int(sample_rate * duration)]
             plot_signal(decay_curve, duration, sample_rate, figsize=(10, 2))
 
-        signal *= attack_curve * decay_curve
+        signal = apply_attack_and_decay(signal, attack_curve, decay_curve)
         show_signal(signal, duration, sample_rate)
 
-    return signal
+    return signal, {'attack_duration': attack_duration, 'attack_degree': attack_degree, 'decay_start': decay_start,
+                    'decay_duration': decay_duration, 'decay_degree': decay_degree}
 
 
 def amplitude_custom_function(signal, sample_rate, duration, modifier_index):
@@ -271,23 +229,29 @@ def generate_signal(i_signal, sample_rate):
         )
         n_modifiers = int(n_modifiers)
 
-    modifier_properties = {}
+    modifier_properties = []
     for index in range(n_modifiers):
         col1, col2 = st.columns([1, 2])
         with col1:
             modifier = st.selectbox('Select modifier', list(function_mapper.keys()), key=f'{i_signal}{index}')
         signal, properties = function_mapper[modifier](signal, sample_rate, duration, f'{i_signal}{index}')
-        modifier_properties[modifier] = properties
+        modifier_properties.append({modifier: properties})
 
     st.subheader('Final signal')
     show_signal(signal, duration, sample_rate)
 
     file_name = st.text_input('File name', key=f'filename{i_signal}')
-    save_button = st.button('Save to file', on_click=write_wav, args=(f'data/{file_name}.wav', sample_rate, signal), key=f'savebutton{i_signal}')
+    save_button = st.button('Save to file', on_click=write_wav, args=(f'data/{file_name}.wav', sample_rate, signal),
+                            key=f'savebutton{i_signal}')
     if save_button:
         st.write(f'Saved at data/{file_name}.wav')
 
-    return signal, {'duration': duration, 'frequency_function': frequency_function, 'timbre': timbre_properties, 'modifier_properties': modifier_properties}
+    return signal, {
+        'duration': duration,
+        'frequency_function_string': frequency_function_string,
+        'timbre': timbre_properties,
+        'modifier_properties': modifier_properties
+    }
 
 
 def mixer(signals, sample_rate):
@@ -306,8 +270,6 @@ def mixer(signals, sample_rate):
     sample_per_bar = sample_per_bit * bits_per_bar
     bar_duration = (sample_per_bit * bits_per_bar) / sample_rate
     final_signal = np.zeros(sample_per_bar)
-
-    st.write(final_signal.shape)
 
     st.text('Select signals')
     columns = st.columns(bits_per_bar)
