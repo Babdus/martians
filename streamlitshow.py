@@ -40,16 +40,18 @@ def show_signal(signal, duration, sample_rate, figsize=(10, 1.5), color='#9988ee
     st.audio(create_audio_player(signal, sample_rate))
 
 
-def timbre(signal, frequency_function, sample_rate, duration, modifier_index):
+def timbre(signal, frequency_function, sample_rate, duration, properties, modifier_index):
     with st.expander('Timbre'):
         col1, col2, col3 = st.columns([1, 1, 2])
         with col1:
-            n_overtones = st.number_input('Number of overtones', min_value=1, max_value=100, value=20, step=1,
-                                          key=f'overtones{modifier_index}')
+            n_overtones = st.number_input('Number of overtones', min_value=1, max_value=100,
+                                          value=properties['n_overtones'] if 'n_overtones' in properties else 20,
+                                          step=1, key=f'overtones{modifier_index}')
             n_overtones = int(n_overtones)
         with col2:
-            n_formants = st.number_input('Number of formants', min_value=0, max_value=10, value=3, step=1,
-                                         key=f'formants{modifier_index}')
+            n_formants = st.number_input('Number of formants', min_value=0, max_value=10,
+                                         value=len(properties['formants']) if 'formants' in properties else 3,
+                                         step=1, key=f'formants{modifier_index}')
             n_formants = int(n_formants)
 
         formants = []
@@ -57,16 +59,35 @@ def timbre(signal, frequency_function, sample_rate, duration, modifier_index):
         for formant in range(n_formants):
             with formant_columns[0]:
                 st.text(f'Formant {formant + 1}')
-                mu = st.number_input('Mu (Hz)', min_value=0.0, max_value=n_overtones*2.0, value=formant*4+1.0, step=1.0,
-                                     key=f'mu{formant}{modifier_index}')
+                mu = st.number_input(
+                    'Mu (Hz)',
+                    min_value=0.0,
+                    max_value=n_overtones * 2.0,
+                    value=properties['formants'][formant]['mu'] if 'formants' in properties else formant * 4 + 1.0,
+                    step=1.0,
+                    key=f'mu{formant}{modifier_index}'
+                )
             with formant_columns[1]:
                 st.text('_')
-                sigma = st.number_input('Sigma (Hz)', min_value=0.001, max_value=float(sample_rate), value=1.0,
-                                        step=1.0, key=f'sigma{formant}{modifier_index}')
+                sigma = st.number_input(
+                    'Sigma (Hz)',
+                    min_value=0.001,
+                    max_value=float(sample_rate),
+                    value=properties['formants'][formant]['sigma'] if 'formants' in properties else 1.0,
+                    step=1.0,
+                    key=f'sigma{formant}{modifier_index}'
+                )
             with formant_columns[2]:
                 st.text('_')
-                amplitude = st.number_input('Amplitude (Pa)', min_value=0.0, max_value=1.0, value=1 - 0.2 * formant,
-                                            step=0.05, key=f'amplitude{formant}{modifier_index}')
+                amplitude = st.number_input(
+                    'Amplitude (Pa)',
+                    min_value=0.0,
+                    max_value=1.0,
+                    value=properties['formants'][formant][
+                        'amplitude'] if 'formants' in properties else 1 - 0.2 * formant,
+                    step=0.05,
+                    key=f'amplitude{formant}{modifier_index}'
+                )
             formants.append({'mu': mu, 'sigma': sigma, 'amplitude': amplitude})
 
         signal, overtones = add_overtones_to_signal(signal, frequency_function, duration, sample_rate, formants,
@@ -81,19 +102,30 @@ def timbre(signal, frequency_function, sample_rate, duration, modifier_index):
     return signal, {'n_overtones': n_overtones, 'formants': formants}
 
 
-def amplitude_envelope(signal, sample_rate, duration, modifier_index):
+def amplitude_envelope(signal, sample_rate, duration, properties, modifier_index):
     with st.expander('Amplitude Envelope'):
-
         attack_columns = st.columns([1, 1, 2])
 
         with attack_columns[0]:
             st.text('Attack')
-            attack_duration = st.number_input('Duration (s)', min_value=0.0, max_value=duration, value=0.05, step=0.01,
-                                        key=f'ampenv{modifier_index}attdur')
+            attack_duration = st.number_input(
+                'Duration (s)',
+                min_value=0.0,
+                max_value=duration,
+                value=properties['attack_duration'] if 'attack_duration' in properties else 0.05,
+                step=0.01,
+                key=f'ampenv{modifier_index}attdur'
+            )
         with attack_columns[1]:
             st.text('_')
-            attack_degree = st.slider('Curve (Pa/exp(s))', min_value=-5.0, max_value=5.0, value=0.0, step=0.1,
-                                      key=f'ampenv{modifier_index}attdeg')
+            attack_degree = st.slider(
+                'Curve (Pa/exp(s))',
+                min_value=-5.0,
+                max_value=5.0,
+                value=properties['attack_degree'] if 'attack_degree' in properties else 0.0,
+                step=0.1,
+                key=f'ampenv{modifier_index}attdeg'
+            )
         attack_curve = get_attack_curve(attack_duration, attack_degree, duration, sample_rate)
         with attack_columns[2]:
             plot_signal(attack_curve, duration, sample_rate)
@@ -102,16 +134,33 @@ def amplitude_envelope(signal, sample_rate, duration, modifier_index):
 
         with decay_columns[0]:
             st.text('Decay')
-            decay_start = st.number_input('Starting time (s)', min_value=0.0, max_value=duration, value=0.05, step=0.01,
-                                    key=f'ampenv{modifier_index}decst')
+            decay_start = st.number_input(
+                'Starting time (s)',
+                min_value=0.0,
+                max_value=duration,
+                value=properties['decay_start'] if 'decay_start' in properties else 0.05,
+                step=0.01,
+                key=f'ampenv{modifier_index}decst'
+            )
         with decay_columns[1]:
             st.text('_')
-            decay_duration = st.number_input('Duration (s)', min_value=0.0, max_value=duration * 5, value=0.05, step=0.01,
-                                       key=f'ampenv{modifier_index}decdur')
+            decay_duration = st.number_input(
+                'Duration (s)',
+                min_value=0.0,
+                max_value=duration * 5,
+                value=properties['decay_duration'] if 'decay_duration' in properties else 0.05,
+                step=0.01,
+                key=f'ampenv{modifier_index}decdur')
         with decay_columns[2]:
             st.text('_')
-            decay_degree = st.slider('Curve (Pa/exp(s))', min_value=-5.0, max_value=5.0, value=0.0, step=0.1,
-                                     key=f'ampenv{modifier_index}decdeg')
+            decay_degree = st.slider(
+                'Curve (Pa/exp(s))',
+                min_value=-5.0,
+                max_value=5.0,
+                value=properties['decay_degree'] if 'decay_degree' in properties else 0.0,
+                step=0.1,
+                key=f'ampenv{modifier_index}decdeg'
+            )
         decay_curve = get_decay_degree(decay_start, decay_duration, decay_degree, duration, sample_rate)
         with decay_columns[3]:
             plot_signal(decay_curve, duration, sample_rate)
@@ -124,12 +173,13 @@ def amplitude_envelope(signal, sample_rate, duration, modifier_index):
                     'decay_duration': decay_duration, 'decay_degree': decay_degree}
 
 
-def amplitude_custom_function(signal, sample_rate, duration, modifier_index):
+def amplitude_custom_function(signal, sample_rate, duration, properties, modifier_index):
     with st.expander('Amplitude custom function'):
         col1, col2 = st.columns([1, 1])
         with col1:
             st.caption('Amplitude (Pa) as a function of time (s)')
-            f = st.text_input('y =', key=f'ampfunc{modifier_index}', value='x')
+            f = st.text_input('y =', key=f'ampfunc{modifier_index}',
+                              value=properties['f'] if 'f' in properties else 'x')
             st.caption('Permitted symbols are "x", numbers, constants "e" and "pi", operators +-*/^, the parentheses ()'
                        ', and functions abs, round, sqrt, log, log2, log10, sin, cos, tan, arcsin, arccos, arctan, sinh'
                        ', cosh, tanh, arcsinh, arccosh, arctanh')
@@ -142,51 +192,83 @@ def amplitude_custom_function(signal, sample_rate, duration, modifier_index):
     return signal, {'f': f}
 
 
-def overdrive(signal, sample_rate, duration, modifier_index):
+def overdrive(signal, sample_rate, duration, properties, modifier_index):
     with st.expander('Overdrive'):
         col1, col2 = st.columns([1, 1])
         with col1:
-            gain = st.slider('Gain (Pa)', min_value=1.0, max_value=20.0, value=1.0, step=0.1, key=f'gain{modifier_index}')
+            gain = st.slider(
+                'Gain (Pa)',
+                min_value=1.0,
+                max_value=20.0,
+                value=properties['gain'] if 'gain' in properties else 1.0,
+                step=0.1,
+                key=f'gain{modifier_index}')
         signal = add_gain(signal, gain)
         with col2:
             show_signal(signal, duration, sample_rate)
     return signal, {'gain': gain}
 
 
-def shifted_copy(signal, sample_rate, duration, modifier_index):
+def shifted_copy(signal, sample_rate, duration, properties, modifier_index):
     with st.expander('Shifted copy'):
         col1, col2 = st.columns([1, 1])
         with col1:
-            shift = st.slider('Shift (ms)', min_value=0.0, max_value=100.0, value=5.0,
-                              step=0.1, key=f'shit{modifier_index}')
-        signal = shift_signal(signal, shift/1000, sample_rate)
+            shift = st.slider(
+                'Shift (ms)',
+                min_value=0.0,
+                max_value=100.0,
+                value=properties['shift'] if 'shift' in properties else 5.0,
+                step=0.1,
+                key=f'shit{modifier_index}'
+            )
+        signal = shift_signal(signal, shift / 1000, sample_rate)
         with col2:
             show_signal(signal, duration, sample_rate)
     return signal, {'shift': shift}
 
 
-def noise(signal, sample_rate, duration, modifier_index):
+def noise(signal, sample_rate, duration, properties, modifier_index):
     with st.expander('Noise'):
         col1, col2 = st.columns([1, 1])
         with col1:
-            noise_amount = st.slider('Amount (Pa)', min_value=0.0, max_value=1.0, value=0.1,
-                                     step=0.01, key=f'noiseamount{modifier_index}')
-            noise_frequency = st.number_input('Frequency (Hz)', min_value=1, max_value=22050, value=4410,
-                                              step=1, key=f'noisefreq{modifier_index}')
+            noise_amount = st.slider(
+                'Amount (Pa)',
+                min_value=0.0,
+                max_value=1.0,
+                value=properties['noise_amount'] if 'noise_amount' in properties else 0.1,
+                step=0.01,
+                key=f'noiseamount{modifier_index}'
+            )
+            noise_frequency = st.number_input(
+                'Frequency (Hz)',
+                min_value=1,
+                max_value=22050,
+                value=properties['noise_frequency'] if 'noise_frequency' in properties else 4410,
+                step=1, key=f'noisefreq{modifier_index}'
+            )
+            noise_frequency = int(noise_frequency)
         signal = add_noise(signal, duration, sample_rate, noise_frequency, noise_amount)
         with col2:
             show_signal(signal, duration, sample_rate)
     return signal, {'noise_amount': noise_amount, 'noise_frequency': noise_frequency}
 
 
-def reverse(signal, sample_rate, duration, modifier_index):
+def reverse(signal, sample_rate, duration, properties, modifier_index):
     with st.expander('Reverse'):
 
         col1, col2 = st.columns([1, 1])
         with col1:
             st.text('Reverse direction')
-            horizontal = st.checkbox('Horizontally', key=f'Reversecheckh{modifier_index}')
-            vertical = st.checkbox('Vertically', key=f'Reversecheckv{modifier_index}')
+            horizontal = st.checkbox(
+                'Horizontally',
+                value=properties['horizontal'] if 'horizontal' in properties else True,
+                key=f'Reversecheckh{modifier_index}'
+            )
+            vertical = st.checkbox(
+                'Vertically',
+                value=properties['vertical'] if 'vertical' in properties else False,
+                key=f'Reversecheckv{modifier_index}'
+            )
 
         if horizontal:
             signal = reverse_signal(signal)
@@ -195,16 +277,23 @@ def reverse(signal, sample_rate, duration, modifier_index):
 
         with col2:
             show_signal(signal, duration, sample_rate)
-    return signal, {'reverse': True}
+    return signal, {'horizontal': horizontal, 'vertical': vertical}
 
 
-def none(signal, sample_rate, duration, modifier_index):
+def none(signal, sample_rate, duration, properties, modifier_index):
     return signal, {}
 
 
-def generate_signal(i_signal, sample_rate):
-    st.header(f'Signal {i_signal}')
-    st.subheader('Initial wave')
+def generate_signal(i_signal, sample_rate, other_signals):
+    col1, col2 = st.columns([1, 1])
+
+    with col1:
+        st.header(f'Signal {i_signal}')
+        st.subheader('Initial wave')
+    with col2:
+        copied_signal_index = st.selectbox('Select signal to make copy of', [None] + list(range(len(other_signals))))
+    properties = other_signals[copied_signal_index]['properties'] if copied_signal_index is not None else {}
+
     col1, col2 = st.columns([1, 1])
 
     with col1:
@@ -212,12 +301,15 @@ def generate_signal(i_signal, sample_rate):
             'Duration (s)',
             min_value=0.0,
             max_value=12.0,
-            value=1.0,
+            value=properties['duration'] if 'duration' in properties else 1.0,
             step=0.125,
             key=f'duration{i_signal}'
         )
         st.caption('Frequency (Hz) as a function of time (s)')
-        frequency_function_string = st.text_input('y =', key=f'freqfunc{i_signal}', value='x')
+        frequency_function_string = st.text_input(
+            'y =',
+            value=properties['frequency_function_string'] if 'frequency_function_string' in properties else 'x',
+            key=f'freqfunc{i_signal}')
         st.caption(
             'Permitted symbols are "x", numbers, constants "e" and "pi", operators +-*/^, the parentheses (), '
             'and functions abs, round, sqrt, log, log2, log10, sin, cos, tan, arcsin, arccos, arctan, sinh, cosh, tanh,'
@@ -246,6 +338,7 @@ def generate_signal(i_signal, sample_rate):
         frequency_function=frequency_function,
         sample_rate=sample_rate,
         duration=duration,
+        properties=properties['timbre'] if 'timbre' in properties else {},
         modifier_index=f'{i_signal}-1'
     )
 
@@ -256,19 +349,34 @@ def generate_signal(i_signal, sample_rate):
             'Number of signal modifiers',
             min_value=0,
             max_value=20,
-            value=0,
+            value=len(properties['modifiers_properties']) if 'modifiers_properties' in properties else 0,
             step=1,
             key=f'nmodifiers{i_signal}'
         )
         n_modifiers = int(n_modifiers)
 
-    modifier_properties = []
+    modifiers_properties = []
+    modifiers = list(function_mapper.keys())
     for index in range(n_modifiers):
         col1, col2 = st.columns([1, 2])
+
+        if 'modifiers_properties' in properties \
+                and len(properties['modifiers_properties']) > index:
+            modifier = list(properties['modifiers_properties'][index].keys())[0]
+            modifier_properties = properties['modifiers_properties'][index][modifier]
+        else:
+            modifier = 'None'
+            modifier_properties = {}
         with col1:
-            modifier = st.selectbox('Select modifier', list(function_mapper.keys()), key=f'{i_signal}{index}')
-        signal, properties = function_mapper[modifier](signal, sample_rate, duration, f'{i_signal}{index}')
-        modifier_properties.append({modifier: properties})
+            modifier = st.selectbox('Select modifier', modifiers, index=modifiers.index(modifier), key=f'{i_signal}{index}')
+        signal, modifier_properties = function_mapper[modifier](
+            signal=signal,
+            sample_rate=sample_rate,
+            duration=duration,
+            properties=modifier_properties,
+            modifier_index=f'{i_signal}{index}'
+        )
+        modifiers_properties.append({modifier: modifier_properties})
 
     st.subheader('Final signal')
     show_signal(signal, duration, sample_rate, figsize=(20, 3))
@@ -283,7 +391,7 @@ def generate_signal(i_signal, sample_rate):
         'duration': duration,
         'frequency_function_string': frequency_function_string,
         'timbre': timbre_properties,
-        'modifier_properties': modifier_properties
+        'modifiers_properties': modifiers_properties
     }
 
 
@@ -316,7 +424,8 @@ def mixer(signals, sample_rate):
     show_signal(final_signal, bar_duration, sample_rate, figsize=(20, 3), color='#88c4c4')
 
     file_name = st.text_input('File name', key=f'filenamefinal')
-    save_button = st.button('Save to file', on_click=write_wav, args=(f'data/{file_name}.wav', sample_rate, final_signal),
+    save_button = st.button('Save to file', on_click=write_wav,
+                            args=(f'data/{file_name}.wav', sample_rate, final_signal),
                             key=f'savebuttonfinal')
     if save_button:
         st.write(f'Saved at data/{file_name}.wav')
@@ -345,7 +454,7 @@ def main():
     n_signals = int(n_signals)
     signals = []
     for i_signal in range(n_signals):
-        signal, properties = generate_signal(i_signal, sample_rate)
+        signal, properties = generate_signal(i_signal, sample_rate, signals)
         signals.append({'signal': signal, 'properties': properties})
 
     mixer(signals, sample_rate)

@@ -174,7 +174,10 @@ def signal_pipeline(properties, sample_rate):
                                                 n_overtones)
     for modifier_properties in properties['modifier_properties']:
         if 'Reverse' in modifier_properties:
-            signal = reverse_signal(signal)
+            if modifier_properties['Reverse']['horizontal']:
+                signal = reverse_signal(signal)
+            if modifier_properties['Reverse']['vertical']:
+                signal = change_sign(signal)
         elif 'Overdrive' in modifier_properties:
             signal = add_gain(signal, modifier_properties['Overdrive']['gain'])
         elif 'Shifted copy' in modifier_properties:
