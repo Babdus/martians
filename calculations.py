@@ -97,6 +97,10 @@ def reverse_signal(signal):
     return np.flip(signal)
 
 
+def change_sign(signal):
+    return -signal
+
+
 def add_noise(signal, duration, sample_rate, noise_frequency, noise_amount):
     samples_1 = np.linspace(0, duration, int(sample_rate * duration), endpoint=False)
     noise_wave = np.sin(2 * np.pi * noise_frequency * samples_1)
