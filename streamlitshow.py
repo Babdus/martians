@@ -7,7 +7,7 @@ from scipy.io.wavfile import write as write_wav
 
 from calculations import get_samples, get_sine_wave, parse_frequency_function, \
     add_overtones_to_signal, reverse_signal, add_noise, shift_signal, add_gain, parse_amplitude_function, \
-    modify_amplitude_with_function, get_attack_curve, get_decay_degree, apply_attack_and_decay, mix, change_sign
+    modify_amplitude_with_function, get_attack_curve, get_decay_curve, apply_attack_and_decay, mix, change_sign
 
 
 def create_audio_player(audio_data, sample_rate):
@@ -161,7 +161,7 @@ def amplitude_envelope(signal, sample_rate, duration, properties, modifier_index
                 step=0.1,
                 key=f'ampenv{modifier_index}decdeg'
             )
-        decay_curve = get_decay_degree(decay_start, decay_duration, decay_degree, duration, sample_rate)
+        decay_curve = get_decay_curve(decay_start, decay_duration, decay_degree, duration, sample_rate)
         with decay_columns[3]:
             plot_signal(decay_curve, duration, sample_rate)
 

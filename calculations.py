@@ -142,7 +142,7 @@ def get_attack_curve(attack_duration, attack_degree, duration, sample_rate):
     return attack_curve
 
 
-def get_decay_degree(decay_start, decay_duration, decay_degree, duration, sample_rate):
+def get_decay_curve(decay_start, decay_duration, decay_degree, duration, sample_rate):
     samples = get_samples(decay_duration, sample_rate)
     decay_degree = -decay_degree
     decay_curve = 1 - np.power(samples, 2 ** decay_degree) / np.power(decay_duration, 2 ** decay_degree)
@@ -192,7 +192,7 @@ def signal_pipeline(properties, sample_rate):
             attack_curve = get_attack_curve(modifier_properties['Amplitude envelope']['attack_duration'],
                                             modifier_properties['Amplitude envelope']['attack_degree'], duration,
                                             sample_rate)
-            decay_curve = get_decay_degree(modifier_properties['Amplitude envelope']['decay_start'],
+            decay_curve = get_decay_curve(modifier_properties['Amplitude envelope']['decay_start'],
                                            modifier_properties['Amplitude envelope']['decay_duration'],
                                            modifier_properties['Amplitude envelope']['decay_degree'], duration,
                                            sample_rate)
